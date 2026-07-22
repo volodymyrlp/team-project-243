@@ -1,0 +1,19 @@
+# --- Java / Maven ---
+target/
+*.class
+!.mvn/wrapper/maven-wrapper.jar
+
+# --- Node / Frontend ---
+node_modules/
+dist/
+*.log
+
+# --- Env / secrets ---
+.env
+*.env.local
+
+# --- IDE / OS ---
+.idea/
+.vscode/
+*.iml
+.DS_Store

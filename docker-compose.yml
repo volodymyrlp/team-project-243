@@ -1,0 +1,32 @@
+services:
+  db:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: travel
+      MYSQL_USER: travel
+      MYSQL_PASSWORD: travel
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3306:3306"
+    volumes:
+      - dbdata:/var/lib/mysql
+
+  # Uncomment once the backend code exists:
+  # backend:
+  #   build: ./backend
+  #   env_file: .env
+  #   ports:
+  #     - "8080:8080"
+  #   depends_on:
+  #     - db
+
+  # Uncomment once the frontend code exists:
+  # frontend:
+  #   build: ./frontend
+  #   ports:
+  #     - "5173:5173"
+  #   depends_on:
+  #     - backend
+
+volumes:
+  dbdata:
