@@ -16,19 +16,19 @@ variable "service_name" {
 }
 
 variable "cloud_name" {
-  description = "Aiven cloud/region; the free tier is AWS-only"
+  description = "Aiven cloud/region; free tier only on DigitalOcean/UpCloud (do-fra = Frankfurt)"
   type        = string
-  default     = "aws-eu-central-1"
+  default     = "do-fra"
 }
 
 variable "plan" {
-  description = "Aiven service plan; free-1 is the free tier"
+  description = "Aiven service plan; free-1-1gb is the free tier (1GB)"
   type        = string
-  default     = "free-1"
+  default     = "free-1-1gb"
 }
 
 variable "mysql_version" {
-  description = "MySQL major version"
+  description = "MySQL version; 8.4 is current (8.0 reached end of availability)"
   type        = string
-  default     = "8"
+  default     = "8.4"
 }
