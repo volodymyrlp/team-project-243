@@ -1,0 +1,7 @@
+aiven_project = "your-aiven-project-name"
+
+# Optional overrides (defaults shown):
+# service_name  = "travel-mysql"
+# cloud_name    = "aws-eu-central-1"
+# plan          = "free-1"
+# mysql_version = "8"
