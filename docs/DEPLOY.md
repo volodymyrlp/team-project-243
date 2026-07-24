@@ -1,21 +1,28 @@
 # Deployment runbook — Team Project #243
 
 Production hosting: **frontend → Vercel**, **backend → Render**, **database → Aiven (MySQL)**.
-All three are free tier. This document is the step-by-step guide the DevOps side follows
-once the backend and frontend skeletons exist in the repo.
+All three are free tier. This document is the step-by-step guide the DevOps side follows.
 
-## Prerequisites
+## Status
 
-Deployment cannot start until:
+| Piece | State |
+| --- | --- |
+| Database — Aiven MySQL | live |
+| Backend — Render | live, see [Deployed service](#deployed-service) |
+| Frontend — Vercel | not deployed, `frontend/` has no app yet |
 
-1. `backend/` contains a buildable Spring Boot app (`pom.xml` + `src/`), with:
-   - `spring-boot-starter-actuator` on the classpath (Render health check hits `/actuator/health`);
-   - a `management.endpoints.web.exposure.include=health` and `management.endpoint.health.probes.enabled=true`
-     so `/actuator/health` answers without auth.
-2. `frontend/` contains a buildable Vite app (`package.json` with a `build` script producing `dist/`).
-3. An OpenRouteService API key is registered (see "Secrets" below).
+The backend must keep `spring-boot-starter-actuator` on the classpath, because Render's health
+check hits `/actuator/health`.
 
-Until then only the database (Aiven) is live.
+**That endpoint answers without authentication only because Spring Boot's
+`ManagementWebSecurityAutoConfiguration` applies while the app defines no `SecurityFilterChain`
+bean of its own.** The moment one is added, it has to `permitAll` on `/actuator/health` —
+otherwise the endpoint starts returning 401, Render marks the service unhealthy, and production
+goes down. This is not hypothetical: `GET /` already returns 401, so the default security chain
+is active.
+
+The frontend still needs a buildable Vite app (`package.json` with a `build` script producing
+`dist/`). An OpenRouteService key is needed for routing (see "Secrets" below).
 
 ## Architecture
 
@@ -43,11 +50,23 @@ definition from git (Infrastructure as Code) instead of clicking through the das
    | `SPRING_DATASOURCE_PASSWORD` | *(secret)* | `cd infra/aiven && terraform output -raw mysql_password` |
    | `NOMINATIM_USER_AGENT` | `team243-travel-planner (contact: <real email>)` | Nominatim policy requires a contact |
    | `ORS_API_KEY` | *(secret)* | OpenRouteService account |
-   | `CORS_ALLOWED_ORIGINS` | the Vercel URL, e.g. `https://team-project-243.vercel.app` | filled after the frontend is deployed |
+   | `CORS_ALLOWED_ORIGINS` | the Vercel URL, e.g. `https://team-project-243.vercel.app` | currently `http://localhost:5173` as a placeholder — replace once the frontend is deployed |
 
 4. Apply → Render builds `backend/Dockerfile`, deploys, and starts health checks against
-   `/actuator/health`. First successful deploy prints the public URL
-   (`https://travel-planner-backend.onrender.com`).
+   `/actuator/health`. The first build takes 5–8 minutes, most of it `dependency:go-offline`.
+
+### Deployed service
+
+| | |
+| --- | --- |
+| URL | <https://travel-planner-backend-4tb0.onrender.com> |
+| Service ID | `srv-d9htdbbeo5us73dl8o3g` |
+| Blueprint ID | `exs-d9ht5nr7uimc73am85vg` |
+| Branch | `main` (auto-deploys on push) |
+
+The URL carries a `-4tb0` suffix because `*.onrender.com` subdomains are unique across all
+of Render and `travel-planner-backend` was already taken. The suffix-less hostname belongs to
+someone else — always use the URL above.
 
 ### Port
 
@@ -56,7 +75,8 @@ The container listens on `$PORT` (Render injects it). The Dockerfile entrypoint 
 
 ### Cold start
 
-Render's free web service sleeps after ~15 minutes of no traffic and takes ~30–60 s to wake.
+The free instance spins down when idle, and Render warns that the first request after that
+can be delayed by 50 s or more. Warm, `/actuator/health` answers in ~0.2 s.
 Options: accept it for the demo, or add an external uptime pinger hitting `/actuator/health`.
 
 ## Frontend on Vercel
