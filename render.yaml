@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: travel-planner-backend
+    runtime: docker
+    branch: main
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    region: frankfurt
+    plan: free
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: SPRING_DATASOURCE_URL
+        sync: false
+      - key: SPRING_DATASOURCE_USERNAME
+        sync: false
+      - key: SPRING_DATASOURCE_PASSWORD
+        sync: false
+      - key: NOMINATIM_URL
+        value: https://nominatim.openstreetmap.org
+      - key: NOMINATIM_USER_AGENT
+        sync: false
+      - key: ORS_API_KEY
+        sync: false
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
