@@ -116,6 +116,52 @@ nothing at all.
 
 A failing run means the backend is down; the step prints the command to power the database back on.
 
+## Smoke tests
+
+`.github/workflows/smoke.yml` runs on every push to `main` and checks production from the
+outside: backend health, that `/api/**` answers without a 5xx, that the frontend serves the app,
+that a deep link reaches the SPA, and that hashed assets are still served as assets.
+
+It first asks the Render API how the deploy **for this exact commit** ended, and fails if that
+deploy did not go live. That check is the point of the workflow. Render keeps the previous
+version serving when a deploy fails, so endpoint checks alone would stay green while the release
+never reached production — which is exactly what happened on 2026-07-25, with every GitHub check
+green and a failed deploy in Render.
+
+This needs one repository secret:
+
+| Secret | Where to get it |
+| --- | --- |
+| `RENDER_API_KEY` | Render dashboard → Account Settings → API Keys → Create API Key |
+
+Without it the deploy check is skipped and only the endpoint checks run, so the workflow is
+still useful but no longer catches a failed deploy. When a commit changes nothing under
+`backend/`, Render creates no deploy at all and the check times out after 15 minutes and moves
+on — that is expected, not a failure.
+
+## Staging
+
+`render.yaml` declares a second web service, `travel-planner-backend-staging`, that tracks the
+`dev` branch. Everything else about it matches production: same Dockerfile, same region, free
+plan, same health check path.
+
+It has its own database on the **same** Aiven service — `travel_staging`, declared in
+`infra/aiven/main.tf`. The free plan allows only one MySQL service, so staging shares the server
+but not the schema. Liquibase applies the same changelogs to both.
+
+After the Blueprint syncs, the staging service needs its `sync: false` env vars filled in the
+Render dashboard, the same way production was set up, with two differences:
+
+- `SPRING_DATASOURCE_URL` points at `travel_staging` instead of `travel`
+- `CORS_ALLOWED_ORIGINS` gets the Vercel `dev` branch URL
+
+On the Vercel side, `dev` already produces preview deployments. To give it a stable address,
+assign a domain to the branch in Settings → Domains → Add Existing (for example
+`team-project-243-dev.vercel.app`) and set its Git branch to `dev`.
+
+Staging costs free-tier instance hours and sleeps like production. The keep-alive workflow does
+**not** ping it, on purpose — waking a staging service every 6 hours would burn hours for nothing.
+
 ## Frontend on Vercel
 
 Live at <https://team-project-243.vercel.app>. Vercel also builds a preview deployment for every
@@ -163,7 +209,7 @@ and apply it in a `WebMvcConfigurer` (or Spring Security CORS config):
 ## Auto-deploy
 
 - `main` → production (Render + Vercel redeploy on push to `main`).
-- `dev` → staging (optional second Render/Vercel environment later).
+- `dev` → staging (`travel-planner-backend-staging` on Render, preview deployments on Vercel).
 
 Render's auto-deploy is scoped by `rootDir: backend` in `render.yaml`: a push to `main` that
 changes nothing under `backend/` produces no deploy and no event at all. So the commit shown as
@@ -226,5 +272,7 @@ release locally cannot catch it. Verify against the real database with
 
 | Branch | Backend (Render) | Frontend (Vercel) | Database |
 | --- | --- | --- | --- |
-| `main` | production service | production deployment | Aiven `travel` |
-| `dev` | staging (optional) | preview deployments | shared Aiven for now |
+| `main` | `travel-planner-backend` | production deployment | Aiven `travel` |
+| `dev` | `travel-planner-backend-staging` | preview deployments | Aiven `travel_staging` |
+
+Both databases live on the same Aiven service, because the free plan allows only one.
