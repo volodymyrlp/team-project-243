@@ -10,7 +10,7 @@ services:
     healthCheckPath: /actuator/health
     envVars:
       - key: SPRING_DATASOURCE_URL
-        sync: false
+        value: jdbc:mysql://travel-mysql-mr-b549.d.aivencloud.com:18032/travel?sslMode=REQUIRED
       - key: SPRING_DATASOURCE_USERNAME
         sync: false
       - key: SPRING_DATASOURCE_PASSWORD
@@ -35,7 +35,7 @@ services:
     healthCheckPath: /actuator/health
     envVars:
       - key: SPRING_DATASOURCE_URL
-        sync: false
+        value: jdbc:mysql://travel-mysql-mr-b549.d.aivencloud.com:18032/travel_staging?sslMode=REQUIRED
       - key: SPRING_DATASOURCE_USERNAME
         sync: false
       - key: SPRING_DATASOURCE_PASSWORD
