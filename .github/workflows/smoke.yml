@@ -14,40 +14,50 @@ jobs:
   smoke:
     runs-on: ubuntu-latest
     steps:
-      - name: Verify the Render deploy for this commit
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Did this push change the backend?
+        id: backend
+        run: |
+          if git rev-parse HEAD^ >/dev/null 2>&1 \
+            && git diff --quiet HEAD^ HEAD -- backend/; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "Nothing under backend/ changed, so Render deploys nothing."
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: The deploy for this commit went live
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-        if: env.RENDER_API_KEY != ''
+        if: steps.backend.outputs.changed == 'true' && env.RENDER_API_KEY != ''
         run: |
           deadline=$(( $(date +%s) + 900 ))
           while [ "$(date +%s)" -lt "$deadline" ]; do
-            body=$(curl -sS -H "Authorization: Bearer $RENDER_API_KEY" \
-              "https://api.render.com/v1/services/$RENDER_SERVICE_ID/deploys?limit=20") || true
-            status=$(echo "$body" | jq -r --arg sha "$GITHUB_SHA" \
-              '[.[].deploy | select(.commit.id == $sha)] | first | .status // empty')
+            status=$(curl -sS -H "Authorization: Bearer $RENDER_API_KEY" \
+              "https://api.render.com/v1/services/$RENDER_SERVICE_ID/deploys?limit=20" \
+              | jq -r --arg sha "$GITHUB_SHA" \
+                '[.[].deploy | select(.commit.id == $sha)] | first | .status // empty') || true
 
             case "$status" in
               live)
-                echo "Render deploy for $GITHUB_SHA is live."
+                echo "Deploy for $GITHUB_SHA is live."
                 exit 0
                 ;;
               build_failed|update_failed|canceled|deactivated)
-                echo "Render deploy for $GITHUB_SHA ended as '$status'."
-                echo "Production is still serving the previous version."
+                echo "Deploy for $GITHUB_SHA ended as '$status'."
+                echo "Render keeps the previous version serving, so the checks below"
+                echo "would still pass. The release did not reach production."
                 exit 1
                 ;;
-              "")
-                echo "No Render deploy for this commit yet."
-                ;;
-              *)
-                echo "Render deploy is '$status', waiting."
-                ;;
             esac
+            echo "Deploy is '${status:-not created yet}', waiting."
             sleep 30
           done
-          echo "No Render deploy for $GITHUB_SHA within 15 minutes."
-          echo "Render only deploys when files under backend/ change, so this is expected"
-          echo "for commits that touch nothing there. Continuing to the endpoint checks."
+          echo "No live deploy for $GITHUB_SHA within 15 minutes."
+          exit 1
 
       - name: Backend is healthy
         run: |
