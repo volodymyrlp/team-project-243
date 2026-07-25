@@ -14,14 +14,18 @@ Users create trips, plan them day by day, add places, and see them on a map.
   - OpenRouteService / OSRM — routing between places
 
 ## Hosting
-- Frontend → **Vercel** — not deployed yet
+- Frontend → **Vercel** — live at <https://team-project-243.vercel.app>
 - Backend → **Render** — live at <https://travel-planner-backend-4tb0.onrender.com>
-- Database → **Aiven (MySQL, free tier)**
+- Database → **Aiven (MySQL, free tier)** — schema applied by Liquibase
 
 The backend is the API only; it has no UI, and every path except `/actuator/health` currently
-answers `401`. The free instance sleeps when idle, so the first request can take 50 s or more.
-Frontend work should point `VITE_API_URL` at the URL above. Deployment details live in
-[docs/DEPLOY.md](docs/DEPLOY.md).
+answers `401`, because the app has no `SecurityFilterChain` of its own yet. CORS is not
+implemented either, so the deployed frontend cannot call the API until both land.
+
+The free instances sleep when idle, so the first request can take 50 s or more. A scheduled
+`Keep-alive` workflow pings the backend every 6 hours, which also keeps the database from
+powering itself off. Deployment details, and the two free-tier traps that already broke a
+release, live in [docs/DEPLOY.md](docs/DEPLOY.md).
 
 ## Repository layout (monorepo)
 ```
@@ -35,8 +39,12 @@ Frontend work should point `VITE_API_URL` at the URL above. Deployment details l
 2. `docker compose up --build` — starts MySQL and the backend on <http://localhost:8080>.
    The first build takes a few minutes (Maven downloads the dependencies).
 3. Check it is alive: `curl http://localhost:8080/actuator/health` → `{"status":"UP"}`.
+4. Frontend, in a second terminal: `cd frontend && npm ci && npm run dev` —
+   Vite serves it on <http://localhost:5173>.
 
-The `frontend` service stays commented out until its code exists.
+The `frontend` service in `docker-compose.yml` stays commented out: there is no
+`frontend/Dockerfile` yet, and the Vite dev server with hot reload is the better local
+experience anyway.
 
 ## Branches
 - `main` — production (Render/Vercel auto-deploy)
