@@ -28,3 +28,15 @@ resource "aiven_mysql_database" "travel_staging" {
   service_name  = aiven_mysql.travel.service_name
   database_name = "travel_staging"
 }
+
+check "mysql_service_is_running" {
+  data "aiven_mysql" "current" {
+    project      = var.aiven_project
+    service_name = var.service_name
+  }
+
+  assert {
+    condition     = data.aiven_mysql.current.state == "RUNNING"
+    error_message = "The Aiven MySQL service is not RUNNING. The free plan powers it off after roughly a day without connections, and while it is off its DNS record is withdrawn, so the backend cannot start at all. See the troubleshooting section of docs/DEPLOY.md for the command that powers it back on."
+  }
+}

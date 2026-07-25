@@ -12,7 +12,7 @@ services:
       - key: SPRING_DATASOURCE_URL
         value: jdbc:mysql://travel-mysql-mr-b549.d.aivencloud.com:18032/travel?sslMode=REQUIRED
       - key: SPRING_DATASOURCE_USERNAME
-        sync: false
+        value: avnadmin
       - key: SPRING_DATASOURCE_PASSWORD
         sync: false
       - key: NOMINATIM_URL
@@ -22,7 +22,7 @@ services:
       - key: ORS_API_KEY
         sync: false
       - key: CORS_ALLOWED_ORIGINS
-        sync: false
+        value: https://team-project-243.vercel.app
 
   - type: web
     name: travel-planner-backend-staging
@@ -37,7 +37,7 @@ services:
       - key: SPRING_DATASOURCE_URL
         value: jdbc:mysql://travel-mysql-mr-b549.d.aivencloud.com:18032/travel_staging?sslMode=REQUIRED
       - key: SPRING_DATASOURCE_USERNAME
-        sync: false
+        value: avnadmin
       - key: SPRING_DATASOURCE_PASSWORD
         sync: false
       - key: NOMINATIM_URL
@@ -47,4 +47,4 @@ services:
       - key: ORS_API_KEY
         sync: false
       - key: CORS_ALLOWED_ORIGINS
-        sync: false
+        value: http://localhost:5173

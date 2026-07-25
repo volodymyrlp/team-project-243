@@ -30,7 +30,8 @@ check hits `/actuator/health`.
 
 **That endpoint answers without authentication only because Spring Boot's
 `ManagementWebSecurityAutoConfiguration` applies while the app defines no `SecurityFilterChain`
-bean of its own.** The moment one is added, it has to `permitAll` on `/actuator/health` —
+bean of its own.** The moment one is added, it has to `permitAll` on `/actuator/health` and
+`/actuator/info` —
 otherwise the endpoint starts returning 401, Render marks the service unhealthy, and production
 goes down. This is not hypothetical: `GET /` already returns 401, so the default security chain
 is active.
@@ -56,19 +57,21 @@ definition from git (Infrastructure as Code) instead of clicking through the das
 
    | Env var | Value | Where it comes from |
    | --- | --- | --- |
-   | `SPRING_DATASOURCE_USERNAME` | `avnadmin` | Aiven service |
    | `SPRING_DATASOURCE_PASSWORD` | *(secret)* | `cd infra/aiven && terraform output -raw mysql_password` |
    | `NOMINATIM_USER_AGENT` | `team243-travel-planner (contact: <real email>)` | Nominatim policy requires a contact |
    | `ORS_API_KEY` | *(secret)* | OpenRouteService account |
-   | `CORS_ALLOWED_ORIGINS` | `https://team-project-243.vercel.app` | still the `http://localhost:5173` placeholder — see [Status](#status) |
 
-   `SPRING_DATASOURCE_URL` is deliberately **not** in that list: it is a plain `value:` in
-   `render.yaml`, different per service (`/travel` for production, `/travel_staging` for staging).
-   The host, port and database name are not secrets — they are printed in this document — and
-   keeping the URL in git means the difference between the two environments shows up in a PR
-   diff instead of living in two browser tabs. On 2026-07-25 that value silently changed on the
-   staging service and staging applied a migration straight to the production database; see
-   [Troubleshooting](#troubleshooting).
+   Three variables, and only two of them are real secrets. `NOMINATIM_USER_AGENT` stays out of git
+   for a different reason: Nominatim's policy requires a genuine contact address in it, and a
+   personal email in a public repository is an invitation to scrapers.
+
+   Everything else — `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `NOMINATIM_URL`,
+   `CORS_ALLOWED_ORIGINS` — is a plain `value:` in `render.yaml`, different per service where it
+   needs to be (`/travel` vs `/travel_staging`, the Vercel origin vs `http://localhost:5173`).
+   None of them is secret, and keeping them in git means the difference between the two
+   environments shows up in a PR diff instead of living in two browser tabs. On 2026-07-25 the
+   datasource URL silently changed on the staging service and staging applied a migration straight
+   to the production database; see [Troubleshooting](#troubleshooting).
 
 4. Apply → Render builds `backend/Dockerfile`, deploys, and starts health checks against
    `/actuator/health`. The first build takes 5–8 minutes, most of it `dependency:go-offline`.
@@ -142,9 +145,36 @@ This needs one repository secret:
 | `RENDER_API_KEY` | Render dashboard → Account Settings → API Keys → Create API Key |
 
 Without it the deploy check is skipped and only the endpoint checks run, so the workflow is
-still useful but no longer catches a failed deploy. When a commit changes nothing under
-`backend/`, Render creates no deploy at all and the check times out after 15 minutes and moves
-on — that is expected, not a failure.
+still useful but no longer catches a failed deploy.
+
+The deploy check runs only when the push actually changed something under `backend/`, decided by
+`git diff HEAD^ HEAD -- backend/`. That mirrors Render's own `rootDir` rule: a docs-only release
+produces no deploy at all, and demanding one would fail every such release.
+
+**A better version of this check is available to the backend side.** If the application published
+the commit it was built from, smoke could ask production directly which commit it is running — no
+platform API, no secret, and it would keep working on any host. Render already injects
+`RENDER_GIT_COMMIT` into the running service, so it takes two things in `application.yml`:
+
+```yaml
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  info:
+    env:
+      enabled: true
+
+info:
+  commit: ${RENDER_GIT_COMMIT:local}
+```
+
+and a `permitAll` on `/actuator/info` in the `SecurityFilterChain`, since Spring Boot's default
+management security exposes **only** `/actuator/health` anonymously — with the config alone the
+endpoint answers `401`. Verified locally: with the config and basic auth it returns
+`{"commit":"local"}`. When that lands, switch this check to `/actuator/info` and drop
+`RENDER_API_KEY` entirely.
 
 ## Staging
 
