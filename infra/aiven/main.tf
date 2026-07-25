@@ -22,3 +22,9 @@ resource "aiven_mysql_database" "travel" {
   service_name  = aiven_mysql.travel.service_name
   database_name = "travel"
 }
+
+resource "aiven_mysql_database" "travel_staging" {
+  project       = var.aiven_project
+  service_name  = aiven_mysql.travel.service_name
+  database_name = "travel_staging"
+}
