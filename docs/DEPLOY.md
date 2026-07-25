@@ -277,13 +277,25 @@ revert, or `main` and production disagree.
 
 ### Database
 
-**This is the one that will hurt.** Liquibase only reverses a changeset if the changeset says how.
-For a `CREATE TABLE` written in formatted SQL, Liquibase can often infer the reverse; for
-`INSERT`, `UPDATE`, `DROP COLUMN` and anything that loses data, it cannot, and a rollback attempt
-fails or, worse, does nothing while looking successful.
+**This is the one that will hurt, and it was rehearsed on staging on 2026-07-25. It does not
+work. Not "partially" — at all.**
 
-None of our current changesets declare a rollback. That is acceptable while the schema is only
-growing and holds no real data. It stops being acceptable the moment users exist.
+```
+Rolling Back Changeset: db/changelog/changes/05-insert-dummy-user.sql::insert-dummy-user
+ERROR: RollbackFailedException
+Liquibase does not support automatic rollback generation for raw sql changes
+```
+
+Every changeset we have is `--liquibase formatted sql`, and for a raw SQL change Liquibase cannot
+infer a reverse — not for `INSERT`, and not for `CREATE TABLE` either. There is no partial
+capability to fall back on: **the database currently cannot be rolled back by one step.**
+
+The failure is at least clean. Liquibase refused before touching anything, and staging came out
+with the same five changesets and the same row it went in with. A rollback attempt during a real
+incident would waste the minutes it takes to discover this, and nothing more.
+
+That is survivable while the schema only grows and holds no real data. It stops being survivable
+the moment users exist.
 
 **Convention to adopt — every changeset carries its own reverse:**
 
@@ -294,19 +306,30 @@ ALTER TABLE trips ADD COLUMN notes TEXT;
 --rollback ALTER TABLE trips DROP COLUMN notes;
 ```
 
-Rolling back the last change on a service, using the Liquibase container so nothing has to be
-installed:
+With that in place, this rolls the last change back on a service. It is the exact command from the
+rehearsal, so it works as written — the two non-obvious parts cost three failed attempts to find:
+the Liquibase images ship **no** JDBC drivers, and overriding the entrypoint loses the default
+search path.
 
 ```bash
-docker run --rm -v "$PWD/backend/src/main/resources/db:/liquibase/changelog" liquibase/liquibase \
-  --url="jdbc:mysql://travel-mysql-mr-b549.d.aivencloud.com:18032/travel_staging?sslMode=REQUIRED" \
-  --username=avnadmin --password="$MYSQL_PWD" \
-  --changeLogFile=changelog/changelog/db.changelog-master.yaml \
-  rollbackCount 1
+PW=$(cd infra/aiven && terraform output -raw mysql_password)
+
+docker run --rm --entrypoint /bin/sh \
+  -v "$PWD/backend/src/main/resources:/liquibase/changelog" \
+  liquibase/liquibase:4.29 -c \
+  "lpm add mysql --global && liquibase \
+    --search-path=/liquibase/changelog \
+    --url='jdbc:mysql://travel-mysql-mr-b549.d.aivencloud.com:18032/travel_staging?sslMode=REQUIRED' \
+    --username=avnadmin --password='$PW' \
+    --changeLogFile=db/changelog/db.changelog-master.yaml \
+    rollbackCount 1"
 ```
 
-Rehearse it on `travel_staging` before ever pointing it at `travel`. A rollback that has never
-been tried is a plan, not a capability.
+The `4.29` tag matches the `liquibase-core` version the application itself runs, so a rehearsal
+behaves like the real thing.
+
+Point it at `travel_staging` and never at `travel` until it has succeeded there. A rollback that
+has never been tried is a plan, not a capability — ours turned out to be a plan.
 
 **When a migration is the problem, the order matters:** roll the database back *first*, then the
 code. The other order leaves the old application talking to a schema it was never built for, and
