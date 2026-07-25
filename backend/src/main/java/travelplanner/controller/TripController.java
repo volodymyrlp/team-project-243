@@ -1,0 +1,58 @@
+package travelplanner.controller;
+
+import jakarta.persistence.EntityNotFoundException;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import travelplanner.dto.TripCreateRequest;
+import travelplanner.dto.TripResponse;
+import travelplanner.service.TripService;
+
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/v1/trips")
+@RequiredArgsConstructor
+public class TripController {
+
+    private static final UUID HARDCODED_USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
+
+    private final TripService tripService;
+
+    @PostMapping
+    public ResponseEntity<TripResponse> createTrip(@Valid @RequestBody TripCreateRequest request) {
+        TripResponse response = tripService.createTrip(HARDCODED_USER_ID, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping
+    public ResponseEntity<List<TripResponse>> getUserTrips() {
+        List<TripResponse> response = tripService.getUserTrips(HARDCODED_USER_ID);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{tripId}")
+    public ResponseEntity<TripResponse> getTripById(@PathVariable UUID tripId) {
+        TripResponse response = tripService.getTripById(tripId);
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/{tripId}")
+    public ResponseEntity<Void> deleteTrip(@PathVariable UUID tripId) {
+        tripService.deleteTrip(tripId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @ExceptionHandler(EntityNotFoundException.class)
+    public ResponseEntity<String> handleNotFound(EntityNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<String> handleBadRequest(IllegalArgumentException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
+    }
+}
