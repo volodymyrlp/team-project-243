@@ -56,12 +56,19 @@ definition from git (Infrastructure as Code) instead of clicking through the das
 
    | Env var | Value | Where it comes from |
    | --- | --- | --- |
-   | `SPRING_DATASOURCE_URL` | `jdbc:mysql://travel-mysql-mr-b549.d.aivencloud.com:18032/travel?sslMode=REQUIRED` | Aiven service (see `infra/aiven`) |
    | `SPRING_DATASOURCE_USERNAME` | `avnadmin` | Aiven service |
    | `SPRING_DATASOURCE_PASSWORD` | *(secret)* | `cd infra/aiven && terraform output -raw mysql_password` |
    | `NOMINATIM_USER_AGENT` | `team243-travel-planner (contact: <real email>)` | Nominatim policy requires a contact |
    | `ORS_API_KEY` | *(secret)* | OpenRouteService account |
    | `CORS_ALLOWED_ORIGINS` | `https://team-project-243.vercel.app` | still the `http://localhost:5173` placeholder — see [Status](#status) |
+
+   `SPRING_DATASOURCE_URL` is deliberately **not** in that list: it is a plain `value:` in
+   `render.yaml`, different per service (`/travel` for production, `/travel_staging` for staging).
+   The host, port and database name are not secrets — they are printed in this document — and
+   keeping the URL in git means the difference between the two environments shows up in a PR
+   diff instead of living in two browser tabs. On 2026-07-25 that value silently changed on the
+   staging service and staging applied a migration straight to the production database; see
+   [Troubleshooting](#troubleshooting).
 
 4. Apply → Render builds `backend/Dockerfile`, deploys, and starts health checks against
    `/actuator/health`. The first build takes 5–8 minutes, most of it `dependency:go-offline`.
@@ -150,10 +157,10 @@ It has its own database on the **same** Aiven service — `travel_staging`, decl
 but not the schema. Liquibase applies the same changelogs to both.
 
 After the Blueprint syncs, the staging service needs its `sync: false` env vars filled in the
-Render dashboard, the same way production was set up, with two differences:
-
-- `SPRING_DATASOURCE_URL` points at `travel_staging` instead of `travel`
-- `CORS_ALLOWED_ORIGINS` gets the Vercel `dev` branch URL
+Render dashboard, the same way production was set up. `SPRING_DATASOURCE_URL` is not among them —
+it comes from `render.yaml` and already points at `travel_staging`. `CORS_ALLOWED_ORIGINS` is set
+to `http://localhost:5173`: with no stable Vercel domain for the `dev` branch, staging's real use
+is as a deployed backend for local frontend work.
 
 On the Vercel side, `dev` already produces preview deployments. To give it a stable address,
 assign a domain to the branch in Settings → Domains → Add Existing (for example
@@ -267,6 +274,31 @@ mysql_user_config {
 The local `mysql:8.4` in `docker-compose.yml` has this setting off, which is why rehearsing a
 release locally cannot catch it. Verify against the real database with
 `SELECT @@global.sql_require_primary_key;` — it must return `0`.
+
+### Staging wrote to the production database
+
+Happened on 2026-07-25. Ihor's `05-insert-dummy-user.sql` was merged into `dev`, staging deployed
+it, and Liquibase applied the changeset to **`travel`** instead of `travel_staging`: production
+gained a `test@example.com` row and a `DATABASECHANGELOG` entry for a changeset that did not exist
+in `main`. Staging's own database got nothing.
+
+The cause was staging's `SPRING_DATASOURCE_URL` pointing at `/travel`. It had been correct — the
+first staging deploy created the tables in `travel_staging` — and changed at some point after,
+either by a manual edit or by a Blueprint re-sync. Nobody could tell which, and that is the point:
+a value living only in the dashboard leaves no history.
+
+That is why the URL now lives in `render.yaml` as a plain `value:`. If it ever drifts again, the
+next Blueprint sync restores it from git.
+
+To check which database a service is really writing to, compare changelogs:
+
+```sql
+SELECT ID, DATEEXECUTED FROM travel.DATABASECHANGELOG ORDER BY ORDEREXECUTED;
+SELECT ID, DATEEXECUTED FROM travel_staging.DATABASECHANGELOG ORDER BY ORDEREXECUTED;
+```
+
+The timestamps say which deploy touched which schema. Production was cleaned by deleting the stray
+`users` row and its `DATABASECHANGELOG` entry, so the database matched the deployed code again.
 
 ## Branches / environments summary
 
