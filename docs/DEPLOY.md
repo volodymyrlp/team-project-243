@@ -30,7 +30,8 @@ check hits `/actuator/health`.
 
 **That endpoint answers without authentication only because Spring Boot's
 `ManagementWebSecurityAutoConfiguration` applies while the app defines no `SecurityFilterChain`
-bean of its own.** The moment one is added, it has to `permitAll` on `/actuator/health` —
+bean of its own.** The moment one is added, it has to `permitAll` on `/actuator/health` and
+`/actuator/info` —
 otherwise the endpoint starts returning 401, Render marks the service unhealthy, and production
 goes down. This is not hypothetical: `GET /` already returns 401, so the default security chain
 is active.
@@ -56,19 +57,21 @@ definition from git (Infrastructure as Code) instead of clicking through the das
 
    | Env var | Value | Where it comes from |
    | --- | --- | --- |
-   | `SPRING_DATASOURCE_USERNAME` | `avnadmin` | Aiven service |
    | `SPRING_DATASOURCE_PASSWORD` | *(secret)* | `cd infra/aiven && terraform output -raw mysql_password` |
    | `NOMINATIM_USER_AGENT` | `team243-travel-planner (contact: <real email>)` | Nominatim policy requires a contact |
    | `ORS_API_KEY` | *(secret)* | OpenRouteService account |
-   | `CORS_ALLOWED_ORIGINS` | `https://team-project-243.vercel.app` | still the `http://localhost:5173` placeholder — see [Status](#status) |
 
-   `SPRING_DATASOURCE_URL` is deliberately **not** in that list: it is a plain `value:` in
-   `render.yaml`, different per service (`/travel` for production, `/travel_staging` for staging).
-   The host, port and database name are not secrets — they are printed in this document — and
-   keeping the URL in git means the difference between the two environments shows up in a PR
-   diff instead of living in two browser tabs. On 2026-07-25 that value silently changed on the
-   staging service and staging applied a migration straight to the production database; see
-   [Troubleshooting](#troubleshooting).
+   Three variables, and only two of them are real secrets. `NOMINATIM_USER_AGENT` stays out of git
+   for a different reason: Nominatim's policy requires a genuine contact address in it, and a
+   personal email in a public repository is an invitation to scrapers.
+
+   Everything else — `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `NOMINATIM_URL`,
+   `CORS_ALLOWED_ORIGINS` — is a plain `value:` in `render.yaml`, different per service where it
+   needs to be (`/travel` vs `/travel_staging`, the Vercel origin vs `http://localhost:5173`).
+   None of them is secret, and keeping them in git means the difference between the two
+   environments shows up in a PR diff instead of living in two browser tabs. On 2026-07-25 the
+   datasource URL silently changed on the staging service and staging applied a migration straight
+   to the production database; see [Troubleshooting](#troubleshooting).
 
 4. Apply → Render builds `backend/Dockerfile`, deploys, and starts health checks against
    `/actuator/health`. The first build takes 5–8 minutes, most of it `dependency:go-offline`.
@@ -142,9 +145,36 @@ This needs one repository secret:
 | `RENDER_API_KEY` | Render dashboard → Account Settings → API Keys → Create API Key |
 
 Without it the deploy check is skipped and only the endpoint checks run, so the workflow is
-still useful but no longer catches a failed deploy. When a commit changes nothing under
-`backend/`, Render creates no deploy at all and the check times out after 15 minutes and moves
-on — that is expected, not a failure.
+still useful but no longer catches a failed deploy.
+
+The deploy check runs only when the push actually changed something under `backend/`, decided by
+`git diff HEAD^ HEAD -- backend/`. That mirrors Render's own `rootDir` rule: a docs-only release
+produces no deploy at all, and demanding one would fail every such release.
+
+**A better version of this check is available to the backend side.** If the application published
+the commit it was built from, smoke could ask production directly which commit it is running — no
+platform API, no secret, and it would keep working on any host. Render already injects
+`RENDER_GIT_COMMIT` into the running service, so it takes two things in `application.yml`:
+
+```yaml
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  info:
+    env:
+      enabled: true
+
+info:
+  commit: ${RENDER_GIT_COMMIT:local}
+```
+
+and a `permitAll` on `/actuator/info` in the `SecurityFilterChain`, since Spring Boot's default
+management security exposes **only** `/actuator/health` anonymously — with the config alone the
+endpoint answers `401`. Verified locally: with the config and basic auth it returns
+`{"commit":"local"}`. When that lands, switch this check to `/actuator/info` and drop
+`RENDER_API_KEY` entirely.
 
 ## Staging
 
@@ -222,6 +252,90 @@ Render's auto-deploy is scoped by `rootDir: backend` in `render.yaml`: a push to
 changes nothing under `backend/` produces no deploy and no event at all. So the commit shown as
 `Live` may legitimately be older than `main`. That is not drift and needs no fixing, as long as
 no backend file changed since.
+
+## Rollback
+
+We can ship in three minutes. Undoing is not symmetric, and the asymmetry is the whole point of
+this section: **code rolls back, a database schema does not — unless somebody wrote the way back
+when they wrote the way forward.**
+
+### Backend
+
+Render dashboard → the service → **Deploys** → **Rollback** on the last known good deploy. It
+redeploys that image; no rebuild, so it is fast. The `Rollback` button is greyed out on the deploy
+that is currently live.
+
+Equivalent from git: revert the offending commit on `main` and let auto-deploy carry it. Slower,
+but it keeps `main` honest — after a dashboard rollback, production runs something that is no
+longer what `main` says. Use the button to stop the bleeding, then revert in git so the two agree.
+
+### Frontend
+
+Vercel dashboard → **Deployments** → the previous production deployment → **Promote to
+Production**. Static files, so it is close to instant. Same rule applies: follow it with a git
+revert, or `main` and production disagree.
+
+### Database
+
+**This is the one that will hurt.** Liquibase only reverses a changeset if the changeset says how.
+For a `CREATE TABLE` written in formatted SQL, Liquibase can often infer the reverse; for
+`INSERT`, `UPDATE`, `DROP COLUMN` and anything that loses data, it cannot, and a rollback attempt
+fails or, worse, does nothing while looking successful.
+
+None of our current changesets declare a rollback. That is acceptable while the schema is only
+growing and holds no real data. It stops being acceptable the moment users exist.
+
+**Convention to adopt — every changeset carries its own reverse:**
+
+```sql
+--liquibase formatted sql
+--changeset author:add-notes-to-trips
+ALTER TABLE trips ADD COLUMN notes TEXT;
+--rollback ALTER TABLE trips DROP COLUMN notes;
+```
+
+Rolling back the last change on a service, using the Liquibase container so nothing has to be
+installed:
+
+```bash
+docker run --rm -v "$PWD/backend/src/main/resources/db:/liquibase/changelog" liquibase/liquibase \
+  --url="jdbc:mysql://travel-mysql-mr-b549.d.aivencloud.com:18032/travel_staging?sslMode=REQUIRED" \
+  --username=avnadmin --password="$MYSQL_PWD" \
+  --changeLogFile=changelog/changelog/db.changelog-master.yaml \
+  rollbackCount 1
+```
+
+Rehearse it on `travel_staging` before ever pointing it at `travel`. A rollback that has never
+been tried is a plan, not a capability.
+
+**When a migration is the problem, the order matters:** roll the database back *first*, then the
+code. The other order leaves the old application talking to a schema it was never built for, and
+`ddl-auto: validate` will refuse to start it — turning a bad release into an outage.
+
+### What cannot be rolled back at all
+
+Data that a migration destroyed. The free Aiven plan has **no backups**, so there is no snapshot to
+restore from. Any changeset that drops a column or a table on production is a one-way door, and
+should be reviewed as one.
+
+## Alerting — what we would actually find out about
+
+Honest inventory, because "we have monitoring" is easy to believe and expensive to be wrong about.
+
+| Event | How we learn | Delay |
+| --- | --- | --- |
+| A deploy fails | Render emails on failure (workspace default), and Smoke fails on the release commit | minutes |
+| Production is down | The Keep-alive workflow fails and GitHub emails | up to 6 hours |
+| The Aiven database powered itself off | Same — Keep-alive goes red, because the health check queries the database | up to 6 hours |
+| A migration corrupted data | Nothing tells us | never, until someone notices |
+
+The six-hour worst case is a deliberate trade: a shorter interval wakes the free Render instance
+more often and burns the monthly instance-hour budget for very little. If the project ever gets
+real users, that is the number to revisit first.
+
+There is no paging, no on-call and no dashboard, and for a student project that is the right
+amount of machinery. What matters is that the table above is written down, so nobody assumes a
+safety net that is not there.
 
 ## Troubleshooting
 
