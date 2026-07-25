@@ -10,6 +10,10 @@ resource "aiven_mysql" "travel" {
 
   mysql_user_config {
     mysql_version = var.mysql_version
+
+    mysql {
+      sql_require_primary_key = false
+    }
   }
 }
 
