@@ -337,9 +337,61 @@ code. The other order leaves the old application talking to a schema it was neve
 
 ### What cannot be rolled back at all
 
-Data that a migration destroyed. The free Aiven plan has **no backups**, so there is no snapshot to
-restore from. Any changeset that drops a column or a table on production is a one-way door, and
-should be reviewed as one.
+Data that a migration destroyed between two backups. The free Aiven plan has **no backups of its
+own**, which is why we take our own — see below. They run daily, so the worst case is losing up to
+a day of writes. Any changeset that drops a column or a table on production is still close to a
+one-way door and should be reviewed as one.
+
+## Backups
+
+`.github/workflows/backup.yml` dumps both schemas every night at 03:00 UTC, and can be run by hand
+from the Actions tab. Aiven's free plan takes no backups at all, so these are the only copies that
+exist.
+
+Each run dumps `travel` and `travel_staging`, **restores both into a throwaway MySQL 8.4 container
+and checks them**, then compresses and uploads them as a workflow artifact kept for 90 days. The
+verification is the point: a dump nobody has restored is a file, not a backup. The run fails if a
+schema comes back with fewer tables than expected or with an empty Liquibase changelog — a dump
+that carries structure but no state would otherwise look perfectly healthy.
+
+Two things learned while building it, both of which cost a failed attempt:
+
+- `mysqldump` against Aiven emits `SET @@GLOBAL.GTID_PURGED` by default, and that makes the dump
+  refuse to load into a server with its own GTID state. `--set-gtid-purged=OFF` removes it.
+- The dump must run in a `mysql:8.4` container rather than with whatever client the runner has, so
+  client and server versions match.
+
+### Restoring
+
+1. Actions → the `Backup` run you want → download the `mysql-backup-<date>` artifact.
+2. `gunzip travel_staging-<date>.sql.gz`
+3. Restore into **staging first**, always:
+
+   ```bash
+   export MYSQL_PWD=$(cd infra/aiven && terraform output -raw mysql_password)
+   docker run --rm -i -e MYSQL_PWD -v "$PWD:/w" -w /w mysql:8.4 \
+     mysql -h travel-mysql-mr-b549.d.aivencloud.com -P 18032 -u avnadmin \
+       --ssl-mode=REQUIRED < travel_staging-<date>.sql
+   ```
+
+4. Check what came back — table count, `DATABASECHANGELOG`, and whatever data mattered — before
+   even considering the same command against `travel`.
+
+**Rehearsed on `travel_staging` on 2026-07-26, and it works.** The restore came back with the same
+6 tables, 5 changesets and the same row it went in with, and the staging backend answered `UP`
+afterwards. The detail that proves the restore actually did something rather than quietly doing
+nothing: `information_schema.tables.CREATE_TIME` for `users` moved to the time of the restore. Check
+that field if you ever need to confirm a restore really landed.
+
+The dump contains `DROP TABLE IF EXISTS` for every table it recreates, so a restore **overwrites**
+the target schema. Restoring `travel` is a destructive act on production and should be treated
+like one: know what you are overwriting, and why.
+
+### What these backups do not protect against
+
+They live in the same GitHub organisation as the code, so they cover data loss, not the loss of the
+account. Retention is 90 days. And if Aiven has powered the database off at 03:00 UTC, the dump
+fails — deliberately, since a silent skip would leave a gap nobody notices.
 
 ## Alerting — what we would actually find out about
 
