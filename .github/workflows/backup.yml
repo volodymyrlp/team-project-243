@@ -1,0 +1,83 @@
+name: Backup
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+env:
+  MYSQL_HOST: travel-mysql-mr-b549.d.aivencloud.com
+  MYSQL_PORT: '18032'
+  MYSQL_USER: avnadmin
+  EXPECTED_TABLES: '6'
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dump both schemas
+        env:
+          MYSQL_PWD: ${{ secrets.AIVEN_MYSQL_PASSWORD }}
+        run: |
+          if [ -z "$MYSQL_PWD" ]; then
+            echo "AIVEN_MYSQL_PASSWORD is not set in the repository secrets."
+            exit 1
+          fi
+          stamp=$(date -u +%Y-%m-%d)
+          echo "stamp=$stamp" >> $GITHUB_ENV
+          mkdir -p dumps
+          for db in travel travel_staging; do
+            docker run --rm -e MYSQL_PWD mysql:8.4 \
+              mysqldump -h "$MYSQL_HOST" -P "$MYSQL_PORT" -u "$MYSQL_USER" \
+                --ssl-mode=REQUIRED --single-transaction --routines --triggers \
+                --set-gtid-purged=OFF \
+                --databases "$db" > "dumps/$db-$stamp.sql"
+            echo "$db: $(wc -c < "dumps/$db-$stamp.sql") bytes"
+          done
+
+      - name: Restore each dump into a scratch server and verify it
+        run: |
+          docker run -d --name scratch -e MYSQL_ROOT_PASSWORD=scratch mysql:8.4
+
+          ready=no
+          for i in $(seq 1 90); do
+            if docker exec scratch mysqladmin ping -uroot -pscratch --silent 2>/dev/null; then
+              ready=yes
+              break
+            fi
+            sleep 2
+          done
+          if [ "$ready" != "yes" ]; then
+            echo "The scratch server never became ready, so the dump could not be verified."
+            exit 1
+          fi
+
+          for db in travel travel_staging; do
+            docker exec -i scratch mysql -uroot -pscratch < "dumps/$db-$stamp.sql"
+
+            tables=$(docker exec scratch mysql -uroot -pscratch -N -B -e \
+              "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='$db'")
+            changesets=$(docker exec scratch mysql -uroot -pscratch -N -B -e \
+              "SELECT COUNT(*) FROM $db.DATABASECHANGELOG")
+            echo "$db restored: $tables tables, $changesets changesets"
+
+            if [ "$tables" -lt "$EXPECTED_TABLES" ]; then
+              echo "Expected at least $EXPECTED_TABLES tables, the dump is not usable."
+              exit 1
+            fi
+            if [ "$changesets" -lt 1 ]; then
+              echo "The Liquibase changelog is empty, so the dump carries structure but no state."
+              exit 1
+            fi
+          done
+
+          docker rm -f scratch
+
+      - name: Compress
+        run: gzip dumps/*.sql
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mysql-backup-${{ env.stamp }}
+          path: dumps/
+          retention-days: 90
