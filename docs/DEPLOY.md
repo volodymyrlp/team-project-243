@@ -277,13 +277,25 @@ revert, or `main` and production disagree.
 
 ### Database
 
-**This is the one that will hurt.** Liquibase only reverses a changeset if the changeset says how.
-For a `CREATE TABLE` written in formatted SQL, Liquibase can often infer the reverse; for
-`INSERT`, `UPDATE`, `DROP COLUMN` and anything that loses data, it cannot, and a rollback attempt
-fails or, worse, does nothing while looking successful.
+**This is the one that will hurt, and it was rehearsed on staging on 2026-07-25. It does not
+work. Not "partially" — at all.**
 
-None of our current changesets declare a rollback. That is acceptable while the schema is only
-growing and holds no real data. It stops being acceptable the moment users exist.
+```
+Rolling Back Changeset: db/changelog/changes/05-insert-dummy-user.sql::insert-dummy-user
+ERROR: RollbackFailedException
+Liquibase does not support automatic rollback generation for raw sql changes
+```
+
+Every changeset we have is `--liquibase formatted sql`, and for a raw SQL change Liquibase cannot
+infer a reverse — not for `INSERT`, and not for `CREATE TABLE` either. There is no partial
+capability to fall back on: **the database currently cannot be rolled back by one step.**
+
+The failure is at least clean. Liquibase refused before touching anything, and staging came out
+with the same five changesets and the same row it went in with. A rollback attempt during a real
+incident would waste the minutes it takes to discover this, and nothing more.
+
+That is survivable while the schema only grows and holds no real data. It stops being survivable
+the moment users exist.
 
 **Convention to adopt — every changeset carries its own reverse:**
 
@@ -294,19 +306,30 @@ ALTER TABLE trips ADD COLUMN notes TEXT;
 --rollback ALTER TABLE trips DROP COLUMN notes;
 ```
 
-Rolling back the last change on a service, using the Liquibase container so nothing has to be
-installed:
+With that in place, this rolls the last change back on a service. It is the exact command from the
+rehearsal, so it works as written — the two non-obvious parts cost three failed attempts to find:
+the Liquibase images ship **no** JDBC drivers, and overriding the entrypoint loses the default
+search path.
 
 ```bash
-docker run --rm -v "$PWD/backend/src/main/resources/db:/liquibase/changelog" liquibase/liquibase \
-  --url="jdbc:mysql://travel-mysql-mr-b549.d.aivencloud.com:18032/travel_staging?sslMode=REQUIRED" \
-  --username=avnadmin --password="$MYSQL_PWD" \
-  --changeLogFile=changelog/changelog/db.changelog-master.yaml \
-  rollbackCount 1
+PW=$(cd infra/aiven && terraform output -raw mysql_password)
+
+docker run --rm --entrypoint /bin/sh \
+  -v "$PWD/backend/src/main/resources:/liquibase/changelog" \
+  liquibase/liquibase:4.29 -c \
+  "lpm add mysql --global && liquibase \
+    --search-path=/liquibase/changelog \
+    --url='jdbc:mysql://travel-mysql-mr-b549.d.aivencloud.com:18032/travel_staging?sslMode=REQUIRED' \
+    --username=avnadmin --password='$PW' \
+    --changeLogFile=db/changelog/db.changelog-master.yaml \
+    rollbackCount 1"
 ```
 
-Rehearse it on `travel_staging` before ever pointing it at `travel`. A rollback that has never
-been tried is a plan, not a capability.
+The `4.29` tag matches the `liquibase-core` version the application itself runs, so a rehearsal
+behaves like the real thing.
+
+Point it at `travel_staging` and never at `travel` until it has succeeded there. A rollback that
+has never been tried is a plan, not a capability — ours turned out to be a plan.
 
 **When a migration is the problem, the order matters:** roll the database back *first*, then the
 code. The other order leaves the old application talking to a schema it was never built for, and
@@ -314,9 +337,61 @@ code. The other order leaves the old application talking to a schema it was neve
 
 ### What cannot be rolled back at all
 
-Data that a migration destroyed. The free Aiven plan has **no backups**, so there is no snapshot to
-restore from. Any changeset that drops a column or a table on production is a one-way door, and
-should be reviewed as one.
+Data that a migration destroyed between two backups. The free Aiven plan has **no backups of its
+own**, which is why we take our own — see below. They run daily, so the worst case is losing up to
+a day of writes. Any changeset that drops a column or a table on production is still close to a
+one-way door and should be reviewed as one.
+
+## Backups
+
+`.github/workflows/backup.yml` dumps both schemas every night at 03:00 UTC, and can be run by hand
+from the Actions tab. Aiven's free plan takes no backups at all, so these are the only copies that
+exist.
+
+Each run dumps `travel` and `travel_staging`, **restores both into a throwaway MySQL 8.4 container
+and checks them**, then compresses and uploads them as a workflow artifact kept for 90 days. The
+verification is the point: a dump nobody has restored is a file, not a backup. The run fails if a
+schema comes back with fewer tables than expected or with an empty Liquibase changelog — a dump
+that carries structure but no state would otherwise look perfectly healthy.
+
+Two things learned while building it, both of which cost a failed attempt:
+
+- `mysqldump` against Aiven emits `SET @@GLOBAL.GTID_PURGED` by default, and that makes the dump
+  refuse to load into a server with its own GTID state. `--set-gtid-purged=OFF` removes it.
+- The dump must run in a `mysql:8.4` container rather than with whatever client the runner has, so
+  client and server versions match.
+
+### Restoring
+
+1. Actions → the `Backup` run you want → download the `mysql-backup-<date>` artifact.
+2. `gunzip travel_staging-<date>.sql.gz`
+3. Restore into **staging first**, always:
+
+   ```bash
+   export MYSQL_PWD=$(cd infra/aiven && terraform output -raw mysql_password)
+   docker run --rm -i -e MYSQL_PWD -v "$PWD:/w" -w /w mysql:8.4 \
+     mysql -h travel-mysql-mr-b549.d.aivencloud.com -P 18032 -u avnadmin \
+       --ssl-mode=REQUIRED < travel_staging-<date>.sql
+   ```
+
+4. Check what came back — table count, `DATABASECHANGELOG`, and whatever data mattered — before
+   even considering the same command against `travel`.
+
+**Rehearsed on `travel_staging` on 2026-07-26, and it works.** The restore came back with the same
+6 tables, 5 changesets and the same row it went in with, and the staging backend answered `UP`
+afterwards. The detail that proves the restore actually did something rather than quietly doing
+nothing: `information_schema.tables.CREATE_TIME` for `users` moved to the time of the restore. Check
+that field if you ever need to confirm a restore really landed.
+
+The dump contains `DROP TABLE IF EXISTS` for every table it recreates, so a restore **overwrites**
+the target schema. Restoring `travel` is a destructive act on production and should be treated
+like one: know what you are overwriting, and why.
+
+### What these backups do not protect against
+
+They live in the same GitHub organisation as the code, so they cover data loss, not the loss of the
+account. Retention is 90 days. And if Aiven has powered the database off at 03:00 UTC, the dump
+fails — deliberately, since a silent skip would leave a gap nobody notices.
 
 ## Alerting — what we would actually find out about
 
