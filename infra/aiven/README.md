@@ -52,6 +52,28 @@ copy of its password with it.
 `terraform.tfstate` is still in the working directory as the pre-migration snapshot. It is
 gitignored and can be deleted once the remote is trusted.
 
+### The state is locked now, which is new
+
+Remote state is locked for the duration of every operation, so a killed command can leave the
+lock behind and every later command fails with `Error acquiring the state lock`. The easiest way
+to cause this is piping a plan into something that closes early:
+
+```bash
+terraform plan | head -4      # head exits, plan gets SIGPIPE, lock survives
+terraform plan > plan.txt     # do this instead
+```
+
+Releasing it — note that HCP's lock ID is the **workspace name**, not the UUID the error prints
+under `Lock Info`:
+
+```bash
+terraform force-unlock -force "volodymyrlp/team-project-243-aiven"
+```
+
+Only force-unlock a lock you recognise as your own. `Who` in the error message says which machine
+and user holds it; if that is not you, someone is mid-apply and breaking their lock can corrupt
+the state.
+
 ### How it was set up (repeat these steps for a new environment)
 
 HCP Terraform (formerly Terraform Cloud) stores state remotely, keeps a version history and locks
