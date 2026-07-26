@@ -41,20 +41,18 @@ touch the database or its password, so it is safe to do at any time.
 Note the leading space before `export`: with zsh's `HIST_IGNORE_SPACE` option the command
 is kept out of `~/.zsh_history`, so the token is not left in plain text on disk.
 
-## State is local, and that is the biggest risk here
+## State lives in HCP Terraform
 
-`terraform.tfstate` lives on one laptop and is gitignored. Two consequences, and the second is
-worse than it sounds:
+Migrated on 2026-07-26 from a local `terraform.tfstate` to the HCP Terraform workspace
+`volodymyrlp/team-project-243-aiven`, free tier. The state is versioned and locked during applies,
+and it is no longer one file on one laptop — which was the single point of failure in our
+infrastructure: losing it would have made Terraform forget the database exists and taken the only
+copy of its password with it.
 
-1. Nobody else can run `apply`. Terraform is effectively a single-person tool on this project.
-2. **If that file is lost, Terraform forgets the database exists.** The next `apply` tries to
-   create `travel-mysql` from scratch, fails because the name is taken, and the real service
-   becomes unmanaged. The database password lives only in this file too — losing it means
-   resetting the password in the Aiven console and updating Render.
+`terraform.tfstate` is still in the working directory as the pre-migration snapshot. It is
+gitignored and can be deleted once the remote is trusted.
 
-There is no backup of it anywhere. That is the single point of failure in our infrastructure.
-
-### Moving to HCP Terraform (free)
+### How it was set up (repeat these steps for a new environment)
 
 HCP Terraform (formerly Terraform Cloud) stores state remotely, keeps a version history and locks
 it during applies, and its free tier covers a team this size at no cost.
@@ -93,8 +91,15 @@ something to hand off.**
    terraform plan   # expected: "No changes."
    ```
 
-7. Set `TF_VAR_aiven_api_token` as a workspace variable in HCP, or keep passing it locally —
-   the CLI-driven workflow runs plans on your machine either way.
+7. **Switch the workspace to local execution: Settings → General → Execution Mode → Local.**
+   A CLI-driven workspace defaults to **Remote** execution, which is not what the name suggests:
+   Terraform packs the working directory up and runs the plan on HashiCorp's servers, and that
+   directory contains `terraform.tfvars` with the Aiven API token. With `Local`, HCP stores only
+   the state and plans run on your machine, so the token never leaves it.
+
+   Keep `Remote` instead only if someone else needs to run plans without local credentials. Then
+   the token belongs in a workspace variable marked sensitive, and `terraform.tfvars` belongs in
+   `.terraformignore`.
 
 ## Notes
 - Free tier: 1 GB RAM, single node, no backups; the service powers off after inactivity.

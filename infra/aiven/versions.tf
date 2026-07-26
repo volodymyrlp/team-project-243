@@ -1,6 +1,14 @@
 terraform {
   required_version = ">= 1.9"
 
+  cloud {
+    organization = "volodymyrlp"
+
+    workspaces {
+      name = "team-project-243-aiven"
+    }
+  }
+
   required_providers {
     aiven = {
       source  = "aiven/aiven"
