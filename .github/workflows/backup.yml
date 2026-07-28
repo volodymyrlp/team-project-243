@@ -41,7 +41,7 @@ jobs:
 
           ready=no
           for i in $(seq 1 90); do
-            if docker exec scratch mysqladmin ping -uroot -pscratch --silent 2>/dev/null; then
+            if docker exec scratch mysql -uroot -pscratch -e "SELECT 1" >/dev/null 2>&1; then
               ready=yes
               break
             fi
