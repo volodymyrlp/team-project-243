@@ -1,6 +1,6 @@
 # Aiven MySQL (Terraform)
 
-Provisions the managed MySQL database (staging/production) for the travel planner
+Provisions the managed MySQL database (staging/production) for MriyaTrip
 on Aiven's free tier.
 
 ## Prerequisites

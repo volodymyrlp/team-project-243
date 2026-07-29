@@ -1,7 +1,7 @@
-# Team Project #243 — Travel Planner
+# MriyaTrip — Team Project #243
 
-A trip-planning web app (similar to [Wanderlog](https://wanderlog.com/)).
-Users create trips, plan them day by day, add places, and see them on a map.
+A trip-planning web app. Users create trips, plan them day by day, add places,
+and see them on a map.
 
 ## Stack
 - **Backend:** Spring Boot 3.4.5 (Java 17, Maven) — REST API, packaged as a JAR
