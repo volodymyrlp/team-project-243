@@ -1,3 +1,6 @@
+jwt:
+  secret: ${JWT_SECRET:dummy_secret_for_ci_testing_purposes_only_123456789}
+  expiration: 3600000
 spring:
   application:
     name: demo
