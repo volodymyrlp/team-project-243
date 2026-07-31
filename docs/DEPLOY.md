@@ -15,6 +15,7 @@ All three are free tier. This document is the step-by-step guide the DevOps side
 | --- | --- |
 | Frontend | <https://team-project-243.vercel.app> |
 | Backend | <https://travel-planner-backend-4tb0.onrender.com> |
+| Backend, staging | <https://travel-planner-backend-staging.onrender.com> |
 
 Two things on the backend still block the frontend from talking to it:
 
