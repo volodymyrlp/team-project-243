@@ -2,8 +2,8 @@ package travelplanner.mapper;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-import travelplanner.dto.TripCreateRequest;
-import travelplanner.dto.TripResponse;
+import travelplanner.dto.trip.TripCreateRequest;
+import travelplanner.dto.trip.TripResponse;
 import travelplanner.entity.Trip;
 
 @Mapper(componentModel = "spring")

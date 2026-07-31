@@ -1,9 +1,9 @@
-package travelplanner.dto;
+package travelplanner.dto.trip;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import lombok.Data;
 import java.time.LocalDate;
+import lombok.Data;
 
 @Data
 public class TripCreateRequest {

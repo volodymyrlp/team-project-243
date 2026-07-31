@@ -1,20 +1,19 @@
 package travelplanner.service;
 
 import jakarta.persistence.EntityNotFoundException;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import travelplanner.dto.TripCreateRequest;
-import travelplanner.dto.TripResponse;
+import travelplanner.dto.trip.TripCreateRequest;
+import travelplanner.dto.trip.TripResponse;
 import travelplanner.entity.Trip;
 import travelplanner.entity.User;
 import travelplanner.mapper.TripMapper;
 import travelplanner.repository.TripRepository;
 import travelplanner.repository.UserRepository;
-
-import java.util.List;
-import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -57,8 +56,8 @@ public class TripService {
 
     @Transactional(readOnly = true)
     public TripResponse getTripById(UUID tripId) {
-        Trip trip = tripRepository.findById(tripId)
-                .orElseThrow(() -> new EntityNotFoundException("Trip not found with id: " + tripId));
+        Trip trip = tripRepository.findById(tripId).orElseThrow(
+                () -> new EntityNotFoundException("Trip not found with id: " + tripId));
         return tripMapper.toResponse(trip);
     }
 
