@@ -26,6 +26,8 @@ services:
       NOMINATIM_USER_AGENT: ${NOMINATIM_USER_AGENT:-team243-travel-planner}
       ORS_API_KEY: ${ORS_API_KEY:-}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
+      JWT_SECRET: ${JWT_SECRET:-local-development-only-not-a-real-secret-000000}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-3600000}
     ports:
       - "8080:8080"
     depends_on:
