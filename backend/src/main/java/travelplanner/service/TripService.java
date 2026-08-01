@@ -1,6 +1,5 @@
 package travelplanner.service;
 
-import jakarta.persistence.EntityNotFoundException;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -11,6 +10,7 @@ import travelplanner.dto.trip.TripCreateRequest;
 import travelplanner.dto.trip.TripResponse;
 import travelplanner.entity.Trip;
 import travelplanner.entity.User;
+import travelplanner.exception.EntityNotFoundException;
 import travelplanner.mapper.TripMapper;
 import travelplanner.repository.TripRepository;
 import travelplanner.repository.UserRepository;
@@ -29,16 +29,9 @@ public class TripService {
             throw new IllegalArgumentException("End date cannot be before start date");
         }
 
-        // Find user, or auto-create a mock user if not found to ensure API functions out-of-the-box
         User user = userRepository.findById(userId)
-                .orElseGet(() -> {
-                    User mockUser = new User();
-                    mockUser.setUserId(userId);
-                    mockUser.setEmail("user-" + userId + "@example.com");
-                    mockUser.setPasswordHash("$2a$10$xyz"); // Dummy hash
-                    mockUser.setFullName("User " + userId.toString().substring(0, 8));
-                    return userRepository.save(mockUser);
-                });
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "User not found with id: " + userId));
 
         Trip trip = tripMapper.toEntity(request);
         trip.setUser(user);
