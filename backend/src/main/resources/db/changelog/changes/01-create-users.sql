@@ -1,5 +1,3 @@
---liquibase formatted sql
---changeset antigravity:create-users-table
 CREATE TABLE users (
     user_id VARCHAR(36) NOT NULL,
     email VARCHAR(255) NOT NULL,
