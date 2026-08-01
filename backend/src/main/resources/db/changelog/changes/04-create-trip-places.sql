@@ -1,3 +1,5 @@
+--liquibase formatted sql
+--changeset antigravity:create-trip-places-table
 CREATE TABLE trip_places (
     trip_place_id VARCHAR(36) NOT NULL,
     trip_id VARCHAR(36) NOT NULL,
