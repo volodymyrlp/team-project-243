@@ -1,3 +1,5 @@
+--liquibase formatted sql
+--changeset antigravity:create-places-table
 CREATE TABLE places (
     place_id VARCHAR(36) NOT NULL,
     external_place_id VARCHAR(255),
