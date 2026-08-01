@@ -76,7 +76,7 @@ jobs:
       - name: Compress
         run: gzip dumps/*.sql
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: mysql-backup-${{ env.stamp }}
           path: dumps/
