@@ -1,12 +1,12 @@
 package travelplanner.controller;
 
-import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import travelplanner.dto.trip.TripCreateRequest;
 import travelplanner.dto.trip.TripResponse;
+import travelplanner.entity.User;
+import travelplanner.exception.EntityNotFoundException;
 import travelplanner.service.TripService;
 
 @RestController
@@ -24,20 +26,20 @@ import travelplanner.service.TripService;
 @RequiredArgsConstructor
 public class TripController {
 
-    private static final UUID HARDCODED_USER_ID = UUID.fromString(
-            "00000000-0000-0000-0000-000000000001");
-
     private final TripService tripService;
 
     @PostMapping
-    public ResponseEntity<TripResponse> createTrip(@Valid @RequestBody TripCreateRequest request) {
-        TripResponse response = tripService.createTrip(HARDCODED_USER_ID, request);
+    public ResponseEntity<TripResponse> createTrip(
+            @AuthenticationPrincipal User user,
+            @Valid @RequestBody TripCreateRequest request
+    ) {
+        TripResponse response = tripService.createTrip(user.getUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping
-    public ResponseEntity<List<TripResponse>> getUserTrips() {
-        List<TripResponse> response = tripService.getUserTrips(HARDCODED_USER_ID);
+    public ResponseEntity<List<TripResponse>> getUserTrips(@AuthenticationPrincipal User user) {
+        List<TripResponse> response = tripService.getUserTrips(user.getUserId());
         return ResponseEntity.ok(response);
     }
 
