@@ -100,3 +100,38 @@ jobs:
             *javascript*) ;;
             *) echo "The SPA rewrite is swallowing static assets."; exit 1 ;;
           esac
+
+      - name: Frontend bundle carries the backend URL
+        run: |
+          asset=$(grep -o '/assets/[^"]*\.js' index.html | head -1)
+          curl -sS -o bundle.js --max-time 60 "$FRONTEND_URL$asset"
+          if ! grep -q "$BACKEND_URL" bundle.js; then
+            echo "The built bundle holds no reference to $BACKEND_URL."
+            echo "VITE_API_URL is missing or wrong in the Vercel production environment."
+            echo "Vite inlines that value at build time, so the deployed app would call"
+            echo "nothing at all while every other check here stays green."
+            exit 1
+          fi
+          echo "The bundle calls $BACKEND_URL."
+
+      - name: Backend accepts cross-origin calls from the frontend
+        run: |
+          code=$(curl -sS -D cors.txt -o /dev/null -w '%{http_code}' \
+            --max-time 180 --retry 3 --retry-delay 10 --retry-all-errors \
+            -X OPTIONS \
+            -H "Origin: $FRONTEND_URL" \
+            -H "Access-Control-Request-Method: POST" \
+            -H "Access-Control-Request-Headers: content-type" \
+            "$BACKEND_URL/api/auth/registration")
+          cat cors.txt
+          if [ "$code" != "200" ]; then
+            echo "The preflight answered $code, so the browser blocks the real request."
+            exit 1
+          fi
+          allowed=$(tr -d '\r' < cors.txt | awk 'tolower($1) == "access-control-allow-origin:" { print $2 }')
+          echo "allowed origin: ${allowed:-none}"
+          if [ "$allowed" != "$FRONTEND_URL" ]; then
+            echo "CORS_ALLOWED_ORIGINS does not cover $FRONTEND_URL."
+            echo "Registration and login fail in the browser only, which no other check sees."
+            exit 1
+          fi
