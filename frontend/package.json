@@ -13,6 +13,7 @@
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-international-phone": "^4.8.0",
+    "react-router-dom": "^7.18.2",
     "react-select-country-list": "^2.2.3"
   },
   "devDependencies": {
