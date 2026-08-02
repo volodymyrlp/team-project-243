@@ -1,8 +1,8 @@
-package travelplanner.dto;
+package travelplanner.dto.trip;
 
-import lombok.Data;
 import java.time.LocalDate;
 import java.util.UUID;
+import lombok.Data;
 
 @Data
 public class TripResponse {

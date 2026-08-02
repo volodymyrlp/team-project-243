@@ -1,0 +1,102 @@
+name: Smoke
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  BACKEND_URL: https://travel-planner-backend-4tb0.onrender.com
+  FRONTEND_URL: https://team-project-243.vercel.app
+  RENDER_SERVICE_ID: srv-d9htdbbeo5us73dl8o3g
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+
+      - name: Did this push change the backend?
+        id: backend
+        run: |
+          if git rev-parse HEAD^ >/dev/null 2>&1 \
+            && git diff --quiet HEAD^ HEAD -- backend/; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "Nothing under backend/ changed, so Render deploys nothing."
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: The deploy for this commit went live
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        if: steps.backend.outputs.changed == 'true' && env.RENDER_API_KEY != ''
+        run: |
+          deadline=$(( $(date +%s) + 900 ))
+          while [ "$(date +%s)" -lt "$deadline" ]; do
+            status=$(curl -sS -H "Authorization: Bearer $RENDER_API_KEY" \
+              "https://api.render.com/v1/services/$RENDER_SERVICE_ID/deploys?limit=20" \
+              | jq -r --arg sha "$GITHUB_SHA" \
+                '[.[].deploy | select(.commit.id == $sha)] | first | .status // empty') || true
+
+            case "$status" in
+              live)
+                echo "Deploy for $GITHUB_SHA is live."
+                exit 0
+                ;;
+              build_failed|update_failed|canceled|deactivated)
+                echo "Deploy for $GITHUB_SHA ended as '$status'."
+                echo "Render keeps the previous version serving, so the checks below"
+                echo "would still pass. The release did not reach production."
+                exit 1
+                ;;
+            esac
+            echo "Deploy is '${status:-not created yet}', waiting."
+            sleep 30
+          done
+          echo "No live deploy for $GITHUB_SHA within 15 minutes."
+          exit 1
+
+      - name: Backend is healthy
+        run: |
+          code=$(curl -sS -o health.json -w '%{http_code}' \
+            --max-time 180 --retry 5 --retry-delay 30 --retry-all-errors \
+            "$BACKEND_URL/actuator/health")
+          cat health.json
+          echo
+          test "$code" = "200"
+          grep -q '"status":"UP"' health.json
+
+      - name: Backend serves the API
+        run: |
+          code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 60 "$BACKEND_URL/api/v1/trips")
+          echo "GET /api/v1/trips -> $code"
+          if [ "$code" -ge 500 ]; then
+            echo "The application is up but the API is failing."
+            exit 1
+          fi
+
+      - name: Frontend serves the app
+        run: |
+          code=$(curl -sS -o index.html -w '%{http_code}' --max-time 60 "$FRONTEND_URL/")
+          test "$code" = "200"
+          grep -q 'id="root"' index.html
+
+      - name: Frontend routes deep links to the SPA
+        run: |
+          code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 60 "$FRONTEND_URL/trips/smoke-test")
+          echo "GET /trips/smoke-test -> $code"
+          test "$code" = "200"
+
+      - name: Frontend serves hashed assets as themselves
+        run: |
+          asset=$(grep -o '/assets/[^"]*\.js' index.html | head -1)
+          echo "asset: $asset"
+          type=$(curl -sS -o /dev/null -w '%{content_type}' --max-time 60 "$FRONTEND_URL$asset")
+          echo "content-type: $type"
+          case "$type" in
+            *javascript*) ;;
+            *) echo "The SPA rewrite is swallowing static assets."; exit 1 ;;
+          esac

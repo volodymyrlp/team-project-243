@@ -13,7 +13,7 @@ jobs:
       backend: ${{ steps.check.outputs.backend }}
       frontend: ${{ steps.check.outputs.frontend }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - id: check
         name: Check which apps exist in the repo
         run: |
@@ -23,7 +23,7 @@ jobs:
   validate-compose:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Validate docker-compose.yml
         run: docker compose config -q
 
@@ -32,8 +32,8 @@ jobs:
     if: needs.detect.outputs.backend == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v5.6.0
         with:
           distribution: temurin
           java-version: '17'
@@ -47,8 +47,8 @@ jobs:
     if: needs.detect.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: '24'
           cache: npm
@@ -59,3 +59,69 @@ jobs:
       - name: Build frontend
         run: npm run build
         working-directory: frontend
+
+  frontend-lint:
+    needs: detect
+    if: needs.detect.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+        working-directory: frontend
+      - name: Lint frontend
+        run: npm run lint
+        working-directory: frontend
+
+  docker-build:
+    needs: detect
+    if: needs.detect.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build the backend image the way Render does
+        run: docker build -f backend/Dockerfile backend/
+
+  migration-check:
+    needs: detect
+    if: needs.detect.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: test
+          MYSQL_DATABASE: travel
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -ptest"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Apply the migrations production already has
+        run: |
+          git fetch --no-tags origin main
+          mkdir -p /tmp/base
+          git archive origin/main backend/src/main/resources | tar -x -C /tmp/base
+          docker run --rm --network host -v /tmp/base/backend/src/main/resources:/lb \
+            --entrypoint sh liquibase/liquibase:4.29 -c \
+            "lpm add mysql --global >/dev/null && liquibase --search-path=/lb \
+             --changeLogFile=db/changelog/db.changelog-master.yaml \
+             --url='jdbc:mysql://127.0.0.1:3306/travel' --username=root --password=test update"
+      - name: Apply this branch's migrations on top
+        run: |
+          docker run --rm --network host -v "$PWD/backend/src/main/resources:/lb" \
+            --entrypoint sh liquibase/liquibase:4.29 -c \
+            "lpm add mysql --global >/dev/null && liquibase --search-path=/lb \
+             --changeLogFile=db/changelog/db.changelog-master.yaml \
+             --url='jdbc:mysql://127.0.0.1:3306/travel' --username=root --password=test update"

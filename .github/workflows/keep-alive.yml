@@ -1,0 +1,24 @@
+name: Keep-alive
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wake the backend and touch the database
+        run: |
+          code=$(curl -sS -o body.json -w '%{http_code}' \
+            --max-time 180 --retry 3 --retry-delay 30 --retry-all-errors \
+            https://travel-planner-backend-4tb0.onrender.com/actuator/health)
+          echo "HTTP $code"
+          cat body.json
+          echo
+          if [ "$code" != "200" ] || ! grep -q '"status":"UP"' body.json; then
+            echo "Backend is not healthy. The Aiven database may be powered off:"
+            echo "PUT {\"powered\": true} to https://api.aiven.io/v1/project/mr-b549/service/travel-mysql"
+            exit 1
+          fi
