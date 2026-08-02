@@ -1,11 +1,8 @@
-const API_URL = import.meta.env.VITE_API_URL;
+import type { LoginData } from "../types/LoginData";
+import type { LoginResponse } from "../types/LoginResponse";
+import type { RegistrationData } from "../types/RegistrationData";
 
-interface RegistrationData {
-  fullName: string;
-  email: string;
-  passwordHash: string;
-  confirmPassword: string;
-}
+const API_URL = import.meta.env.VITE_API_URL;
 
 export const registerUser = async (data: RegistrationData) => {
   const response = await fetch(`${API_URL}/api/auth/registration`, {
@@ -23,4 +20,22 @@ export const registerUser = async (data: RegistrationData) => {
   }
 
   return text ? JSON.parse(text) : null;
+};
+
+export const loginUser = async (data: LoginData): Promise<LoginResponse> => {
+  const response = await fetch(`${API_URL}/api/auth/login`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+
+  const text = await response.text();
+
+  if (!response.ok) {
+    throw new Error(text || "Login failed");
+  }
+
+  return JSON.parse(text);
 };

@@ -2,6 +2,7 @@ import { useState } from "react";
 import google from "../assets/images/google.svg";
 import "./RegistrationPage.scss";
 import { registerUser } from "../api/auth";
+import { Link } from "react-router-dom";
 
 interface RegistrationForm {
   fullName: string;
@@ -148,6 +149,15 @@ export const RegistrationPage = () => {
           >
             {loading ? "Creating..." : "Sign up"}
           </button>
+          <p>
+            Already have an account?{" "}
+            <Link
+              className='form-link'
+              to='/login'
+            >
+              Login
+            </Link>
+          </p>
         </form>
       </div>
     </section>
