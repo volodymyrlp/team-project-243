@@ -9,5 +9,12 @@ databaseChangeLog:
       file: db/changelog/changes/04-create-trip-places.sql
   - include:
       file: db/changelog/changes/05-insert-dummy-user.sql
-  - include:
-      file: db/changelog/changes/06-update-places-table.sql
+  - changeSet:
+      id: 06-update-places-table
+      author: Yura Yurchuk
+      changes:
+        - sqlFile:
+            path: changes/06-update-places-table.sql
+            relativeToChangelogFile: true
+            splitStatements: true
+            endDelimiter: ";"
