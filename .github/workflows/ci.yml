@@ -91,6 +91,9 @@ jobs:
     needs: detect
     if: needs.detect.outputs.backend == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
     services:
       mysql:
         image: mysql:8.4
@@ -108,7 +111,42 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - name: Apply the migrations production already has
+      - name: Restore the latest production backup
+        id: baseline
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          run_id=$(gh run list --workflow backup.yml --status success --limit 1 \
+                     --json databaseId --jq '.[0].databaseId // empty')
+          if [ -z "$run_id" ] || ! gh run download "$run_id" -D dumps; then
+            echo "No backup artifact available, replaying main instead."
+            echo "restored=no" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          dump=$(find dumps -name 'travel-*.sql.gz' | head -1)
+          if [ -z "$dump" ]; then
+            echo "The artifact carries no production dump, replaying main instead."
+            echo "restored=no" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          gunzip -c "$dump" | docker run -i --rm --network host mysql:8.4 \
+            mysql -h 127.0.0.1 -uroot -ptest >/dev/null
+
+          docker run --rm --network host mysql:8.4 \
+            mysql -h 127.0.0.1 -uroot -ptest travel -e \
+            "UPDATE DATABASECHANGELOGLOCK SET LOCKED=0, LOCKGRANTED=NULL, LOCKEDBY=NULL"
+
+          applied=$(docker run --rm --network host mysql:8.4 \
+            mysql -h 127.0.0.1 -uroot -ptest -N -B -e \
+            "SELECT COUNT(*) FROM travel.DATABASECHANGELOG")
+          echo "Baseline is $(basename "$dump") with $applied changesets already applied."
+
+          echo "restored=yes" >> "$GITHUB_OUTPUT"
+
+      - name: Replay main's migrations when no backup was restored
+        if: steps.baseline.outputs.restored != 'yes'
         run: |
           git fetch --no-tags origin main
           mkdir -p /tmp/base
