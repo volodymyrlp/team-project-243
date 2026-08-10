@@ -1,0 +1,602 @@
+@use "../styles/variables" as *;
+
+.main-before-auth {
+  width: 100%;
+  overflow: hidden;
+
+  background: $background;
+  color: #0f172a;
+
+  &__hero {
+    position: relative;
+
+    min-height: 720px;
+
+    display: flex;
+    flex-direction: column;
+
+    background:
+      linear-gradient(
+        180deg,
+        rgb(2 132 199 / 20%) 0%,
+        rgb(2 132 199 / 5%) 100%
+      ),
+      $background;
+  }
+
+  &__header {
+    position: absolute;
+    top: 0;
+    left: 0;
+
+    z-index: 10;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    width: 100%;
+
+    padding: 28px 6%;
+  }
+
+  &__brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    color: inherit;
+    text-decoration: none;
+  }
+
+  &__logo {
+    width: 44px;
+    height: 44px;
+
+    object-fit: contain;
+  }
+
+  &__brand-name {
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.7px;
+  }
+
+  &__nav {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+
+    a {
+      color: #0f172a;
+      text-decoration: none;
+
+      font-size: 15px;
+      font-weight: 500;
+
+      transition: color 0.2s ease;
+
+      &:hover {
+        color: $primary;
+      }
+    }
+  }
+
+  &__nav-button {
+    padding: 11px 20px;
+
+    border-radius: 12px;
+
+    background: $primary;
+
+    color: white !important;
+
+    &:hover {
+      opacity: 0.9;
+    }
+  }
+
+  &__hero-content {
+    width: min(850px, 90%);
+
+    margin: auto;
+
+    text-align: center;
+  }
+
+  &__eyebrow,
+  &__section-label {
+    display: inline-block;
+
+    margin-bottom: 18px;
+
+    color: $primary;
+
+    font-size: 12px;
+    font-weight: 700;
+
+    letter-spacing: 2px;
+  }
+
+  &__hero-content h1 {
+    margin: 0 0 28px;
+
+    font-size: clamp(42px, 7vw, 78px);
+    line-height: 1.04;
+
+    letter-spacing: -3px;
+  }
+
+  &__hero-content p {
+    width: min(700px, 100%);
+
+    margin: 0 auto 34px;
+
+    color: #64748b;
+
+    font-size: 17px;
+    line-height: 1.7;
+  }
+
+  &__cta-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    min-height: 54px;
+
+    padding: 0 28px;
+
+    border-radius: 14px;
+
+    background: $primary;
+
+    color: white;
+
+    font-size: 16px;
+    font-weight: 600;
+
+    text-decoration: none;
+
+    box-shadow: 0 12px 25px rgb(2 132 199 / 20%);
+
+    transition:
+      transform 0.2s ease,
+      box-shadow 0.2s ease;
+
+    &:hover {
+      transform: translateY(-2px);
+
+      box-shadow: 0 16px 30px rgb(2 132 199 / 28%);
+    }
+
+    &--light {
+      background: white;
+
+      color: $primary;
+
+      box-shadow: none;
+
+      &:hover {
+        box-shadow: 0 12px 25px rgb(0 0 0 / 10%);
+      }
+    }
+  }
+
+  &__section-heading {
+    width: min(700px, 90%);
+
+    margin: 0 auto 50px;
+
+    text-align: center;
+
+    h2 {
+      margin: 0 0 16px;
+
+      font-size: clamp(30px, 5vw, 48px);
+      line-height: 1.1;
+
+      letter-spacing: -1.5px;
+    }
+
+    p {
+      margin: 0;
+
+      color: #64748b;
+
+      font-size: 16px;
+      line-height: 1.6;
+    }
+  }
+
+  &__countries {
+    padding: 100px 6%;
+  }
+
+  &__countries-grid {
+    display: grid;
+
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+
+    gap: 24px;
+
+    width: min(1200px, 100%);
+
+    margin: 0 auto;
+  }
+
+  .country-card {
+    overflow: hidden;
+
+    background: $surface;
+
+    border-radius: 24px;
+
+    box-shadow: 0 15px 35px rgb(0 0 0 / 7%);
+
+    transition:
+      transform 0.25s ease,
+      box-shadow 0.25s ease;
+
+    &:hover {
+      transform: translateY(-5px);
+
+      box-shadow: 0 20px 45px rgb(0 0 0 / 12%);
+    }
+
+    &--featured {
+      grid-column: span 2;
+
+      display: grid;
+
+      grid-template-columns: 1.2fr 1fr;
+    }
+
+    &__image-wrapper {
+      position: relative;
+
+      height: 230px;
+
+      overflow: hidden;
+    }
+
+    &--featured &__image-wrapper {
+      height: 100%;
+      min-height: 300px;
+    }
+
+    &__image {
+      display: block;
+
+      width: 100%;
+      height: 100%;
+
+      object-fit: cover;
+
+      transition: transform 0.4s ease;
+    }
+
+    &:hover &__image {
+      transform: scale(1.04);
+    }
+
+    &__rank {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      width: 38px;
+      height: 38px;
+
+      border-radius: 50%;
+
+      background: rgb(255 255 255 / 90%);
+
+      color: #0f172a;
+
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    &__content {
+      padding: 24px;
+    }
+
+    &__content h3 {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+
+      margin: 0 0 8px;
+
+      font-size: 23px;
+    }
+
+    &__nights {
+      display: inline-block;
+
+      margin-bottom: 14px;
+
+      color: $primary;
+
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    &__content p {
+      margin: 0;
+
+      color: #64748b;
+
+      font-size: 14px;
+      line-height: 1.6;
+    }
+  }
+
+
+  &__reviews {
+    padding: 100px 6%;
+
+    background: $surface;
+  }
+
+  &__reviews-grid {
+    display: grid;
+
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+
+    gap: 24px;
+
+    width: min(1000px, 100%);
+
+    margin: 0 auto;
+  }
+
+  .review-card {
+    padding: 32px;
+
+    border-radius: 24px;
+
+    background: $background;
+
+    &__stars {
+      margin-bottom: 20px;
+
+      color: #f59e0b;
+
+      letter-spacing: 3px;
+    }
+
+    blockquote {
+      margin: 0 0 28px;
+
+      color: #334155;
+
+      font-size: 16px;
+      line-height: 1.7;
+    }
+
+    &__author {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    &__avatar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      width: 42px;
+      height: 42px;
+
+      border-radius: 50%;
+
+      background: $primary;
+
+      color: white;
+
+      font-weight: 600;
+    }
+
+    &__author div:last-child {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    &__author span {
+      color: #64748b;
+
+      font-size: 12px;
+    }
+  }
+
+
+  &__final-cta {
+    padding: 120px 6%;
+
+    background:
+      radial-gradient(
+        circle at 50% 0%,
+        rgb(125 211 252 / 50%),
+        transparent 55%
+      ),
+      #0284c7;
+
+    color: white;
+
+    text-align: center;
+  }
+
+  &__final-cta-content {
+    width: min(700px, 100%);
+
+    margin: 0 auto;
+
+    .main-before-auth__section-label {
+      color: rgb(255 255 255 / 75%);
+    }
+
+    h2 {
+      margin: 0 0 20px;
+
+      font-size: clamp(32px, 5vw, 54px);
+      line-height: 1.1;
+
+      letter-spacing: -1.5px;
+    }
+
+    p {
+      margin: 0 auto 32px;
+
+      color: rgb(255 255 255 / 85%);
+
+      font-size: 16px;
+      line-height: 1.6;
+    }
+  }
+
+  &__footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding: 28px 6%;
+
+    background: #075985;
+
+    color: white;
+
+    p {
+      margin: 0;
+
+      color: rgb(255 255 255 / 70%);
+
+      font-size: 13px;
+    }
+  }
+
+  &__footer-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    font-weight: 600;
+  }
+
+  &__footer-logo {
+    width: 30px;
+    height: 30px;
+
+    object-fit: contain;
+  }
+
+  &__copyright {
+    color: rgb(255 255 255 / 60%);
+
+    font-size: 12px;
+  }
+
+
+  @media (width < 700px) {
+    &__hero {
+      min-height: 650px;
+    }
+
+    &__header {
+      padding: 20px;
+    }
+
+    &__brand-name {
+      font-size: 20px;
+    }
+
+    &__logo {
+      width: 38px;
+      height: 38px;
+    }
+
+    &__nav {
+      gap: 10px;
+
+      a:first-child {
+        display: none;
+      }
+    }
+
+    &__hero-content h1 {
+      letter-spacing: -2px;
+    }
+
+    &__countries-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .country-card--featured {
+      grid-column: auto;
+
+      display: block;
+    }
+
+    .country-card--featured .country-card__image-wrapper {
+      min-height: 230px;
+      height: 230px;
+    }
+
+    &__reviews-grid {
+      grid-template-columns: 1fr;
+    }
+
+    &__footer {
+      flex-direction: column;
+
+      gap: 12px;
+
+      text-align: center;
+    }
+  }
+
+  @media (width < 480px) {
+    &__hero {
+      min-height: 600px;
+    }
+
+    &__header {
+      align-items: flex-start;
+    }
+
+    &__brand-name {
+      display: none;
+    }
+
+    &__hero-content {
+      width: 90%;
+    }
+
+    &__hero-content p {
+      font-size: 15px;
+    }
+
+    &__countries,
+    &__reviews {
+      padding: 70px 20px;
+    }
+
+    &__final-cta {
+      padding: 80px 20px;
+    }
+
+    .country-card__content {
+      padding: 20px;
+    }
+
+    .review-card {
+      padding: 24px;
+    }
+  }
+}
