@@ -51,6 +51,15 @@ experience anyway.
 - `main` — production (Render/Vercel auto-deploy)
 - `dev` — staging
 
+Work lands in `dev` first. Getting it from `dev` into `main` is a **manual** pull request —
+nothing promotes itself. Deploys, on the other hand, are automatic: `render.yaml` pins each
+service to a branch, so a push to `dev` redeploys staging and a push to `main` redeploys
+production.
+
+So a change that is merged but not yet released lives only in `dev`. GitHub opens the
+repository on `main`, which is why it can look missing. Compare the two branches to see what
+is waiting for a release: <https://github.com/volodymyrlp/team-project-243/compare/main...dev>
+
 ## Environment variables
 See `.env.example`.
 
