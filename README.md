@@ -20,7 +20,7 @@ and see them on a map.
 
 The backend is the API only; it has no UI. `SecurityConfig` leaves `/actuator/health`,
 `/api/auth/**`, `/swagger-ui/**` and `/error` open and requires a JWT for everything else, so
-`/api/trips` answers `401` without a token. CORS is read from `CORS_ALLOWED_ORIGINS`, which in
+`/api/v1/trips` answers `401` without a token. CORS is read from `CORS_ALLOWED_ORIGINS`, which in
 production is the Vercel domain, so the deployed frontend can call the API.
 
 The free instances sleep when idle, so the first request can take 50 s or more. A scheduled
