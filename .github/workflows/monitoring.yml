@@ -1,0 +1,94 @@
+name: Monitoring
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+env:
+  PROD_URL: https://travel-planner-backend-4tb0.onrender.com/actuator/health
+  STAGING_URL: https://travel-planner-backend-staging.onrender.com/actuator/health
+  FRONTEND_URL: https://team-project-243.vercel.app/
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Wake every service and record how long it took
+        id: probe
+        run: |
+          : > probe.txt
+          {
+            echo "| Service | Up | Was awake | Seconds to answer |"
+            echo "|---|---|---|---|"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          probe() {
+            name=$1
+            url=$2
+            expect=$3
+
+            # A short first attempt with no retries answers one question only:
+            # was the instance already awake? Render's free tier sleeps after
+            # ~15 min idle, and a sleeping instance never answers this fast.
+            if curl -sS -o /dev/null --max-time 10 "$url" 2>/dev/null; then
+              warm=1
+            else
+              warm=0
+            fi
+
+            # The real measurement. A single cold request routinely dies before
+            # the instance finishes waking, so the retries are not optional —
+            # without them this reports a false outage every time.
+            start=$(date +%s)
+            if curl -sS -o body.txt --max-time 240 --retry 3 --retry-delay 20 \
+                 --retry-all-errors "$url" 2>/dev/null \
+               && grep -q "$expect" body.txt; then
+              up=1
+            else
+              up=0
+            fi
+            seconds=$(( $(date +%s) - start ))
+
+            echo "$name $up $warm $seconds" >> probe.txt
+            echo "| $name | $up | $warm | $seconds |" >> "$GITHUB_STEP_SUMMARY"
+
+            if [ "$name" = "prod" ]; then
+              echo "prod_up=$up" >> "$GITHUB_OUTPUT"
+            fi
+          }
+
+          probe prod "$PROD_URL" '"status":"UP"'
+          probe staging "$STAGING_URL" '"status":"UP"'
+          probe frontend "$FRONTEND_URL" '<title>'
+
+          cat probe.txt
+
+      - name: Push the metrics to Grafana Cloud
+        env:
+          GRAFANA_PROM_URL: ${{ secrets.GRAFANA_PROM_URL }}
+          GRAFANA_PROM_USER: ${{ secrets.GRAFANA_PROM_USER }}
+          GRAFANA_TOKEN: ${{ secrets.GRAFANA_TOKEN }}
+        run: |
+          if [ -z "$GRAFANA_TOKEN" ]; then
+            echo "Grafana Cloud secrets are not set, so nothing is pushed."
+            echo "The probe above still ran and its numbers are in the summary."
+            exit 0
+          fi
+          # Prometheus remote_write is protobuf wrapped in snappy, which is why
+          # this step is Python and not another curl like the rest of the repo.
+          pip install --quiet prometheus-remote-writer
+          python .github/scripts/push_metrics.py probe.txt
+
+      - name: Fail loudly when production is down
+        if: steps.probe.outputs.prod_up != '1'
+        run: |
+          echo "Production did not report UP within 240 s including retries."
+          echo "The Aiven database may be powered off — the free plan powers it"
+          echo "down after roughly a day without connections, and while it is off"
+          echo "its DNS record is withdrawn, so the backend cannot start at all."
+          echo 'Wake it: PUT {"powered": true} to'
+          echo "https://api.aiven.io/v1/project/mr-b549/service/travel-mysql"
+          exit 1
