@@ -11,3 +11,5 @@ databaseChangeLog:
       file: db/changelog/changes/05-insert-dummy-user.sql
   - include:
       file: db/changelog/changes/06-update-places-table.sql
+  - include:
+      file: db/changelog/changes/07-fix-places-relation.sql
