@@ -1,5 +1,5 @@
 --liquibase formatted sql
---changeset ihor:create-trips-table
+--changeset antigravity:create-trips-table
 CREATE TABLE trips (
     trip_id VARCHAR(36) NOT NULL,
     user_id VARCHAR(36) NOT NULL,
