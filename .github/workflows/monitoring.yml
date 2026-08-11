@@ -1,0 +1,100 @@
+name: Monitoring
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+env:
+  PROD_URL: https://travel-planner-backend-4tb0.onrender.com
+  STAGING_URL: https://travel-planner-backend-staging.onrender.com
+  FRONTEND_URL: https://team-project-243.vercel.app
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wake every service and record how long it took
+        id: probe
+        run: |
+          : > metrics.txt
+          : > summary.md
+          echo "| Service | Up | Was awake | Seconds to answer |" >> summary.md
+          echo "|---|---|---|---|" >> summary.md
+
+          probe_backend() {
+            name=$1
+            url=$2
+
+            # A short first attempt with no retries answers one question only:
+            # was the instance already awake? Render's free tier sleeps after
+            # ~15 min idle, and a sleeping instance never answers this fast.
+            if curl -sS -o /dev/null --max-time 10 "$url/actuator/health" 2>/dev/null; then
+              warm=1
+            else
+              warm=0
+            fi
+
+            # Now the real measurement. A single cold request routinely dies
+            # before the instance finishes waking, so retries are mandatory —
+            # without them this reports a false outage.
+            start=$(date +%s)
+            if curl -sS -o body.json --max-time 240 --retry 3 --retry-delay 20 \
+                 --retry-all-errors "$url/actuator/health" 2>/dev/null \
+               && grep -q '"status":"UP"' body.json; then
+              up=1
+            else
+              up=0
+            fi
+            seconds=$(( $(date +%s) - start ))
+
+            echo "backend,service=$name up=${up}i,warm=${warm}i,seconds=${seconds}i" >> metrics.txt
+            echo "| $name | $up | $warm | $seconds |" >> summary.md
+
+            if [ "$name" = "prod" ]; then
+              echo "prod_up=$up" >> "$GITHUB_OUTPUT"
+            fi
+          }
+
+          probe_backend prod "$PROD_URL"
+          probe_backend staging "$STAGING_URL"
+
+          code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 "$FRONTEND_URL" 2>/dev/null || echo 000)
+          if [ "$code" = "200" ]; then fe_up=1; else fe_up=0; fi
+          echo "frontend up=${fe_up}i" >> metrics.txt
+          echo "| frontend | $fe_up | — | — |" >> summary.md
+
+          cat summary.md >> "$GITHUB_STEP_SUMMARY"
+          cat metrics.txt
+
+      - name: Push the metrics to Grafana Cloud
+        env:
+          GRAFANA_INFLUX_URL: ${{ secrets.GRAFANA_INFLUX_URL }}
+          GRAFANA_INFLUX_USER: ${{ secrets.GRAFANA_INFLUX_USER }}
+          GRAFANA_TOKEN: ${{ secrets.GRAFANA_TOKEN }}
+        run: |
+          if [ -z "$GRAFANA_INFLUX_URL" ] || [ -z "$GRAFANA_TOKEN" ]; then
+            echo "Grafana Cloud secrets are not set, so nothing is pushed."
+            echo "The probe above still ran and its numbers are in the summary."
+            exit 0
+          fi
+
+          code=$(curl -sS -o push.log -w '%{http_code}' -X POST "$GRAFANA_INFLUX_URL" \
+                   -u "$GRAFANA_INFLUX_USER:$GRAFANA_TOKEN" \
+                   --data-binary @metrics.txt)
+          echo "Grafana Cloud answered $code"
+          if [ "$code" != "204" ] && [ "$code" != "200" ]; then
+            cat push.log
+            exit 1
+          fi
+
+      - name: Fail loudly when production is down
+        if: steps.probe.outputs.prod_up != '1'
+        run: |
+          echo "Production did not report UP within 240 s including retries."
+          echo "The Aiven database may be powered off — the free plan powers it"
+          echo "down after roughly a day without connections, and while it is off"
+          echo "its DNS record is withdrawn, so the backend cannot start at all."
+          echo 'Wake it: PUT {"powered": true} to'
+          echo "https://api.aiven.io/v1/project/mr-b549/service/travel-mysql"
+          exit 1
