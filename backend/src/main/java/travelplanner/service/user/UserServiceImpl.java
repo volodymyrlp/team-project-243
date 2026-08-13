@@ -7,6 +7,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import travelplanner.dto.user.UserRegisterRequestDto;
 import travelplanner.dto.user.UserRegisterResponseDto;
+import travelplanner.dto.user.UserResponseDto;
+import travelplanner.dto.user.UserUpdatePasswordRequestDto;
+import travelplanner.dto.user.UserUpdateRequestDto;
 import travelplanner.entity.User;
 import travelplanner.exception.RegistrationException;
 import travelplanner.mapper.UserMapper;
@@ -36,8 +39,25 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public UserRegisterResponseDto getUserInfo() {
+    public UserResponseDto getUserInfo() {
         User user = authenticationService.getAuthenticatedUser();
-        return userMapper.toDto(user);
+        return userMapper.toFullUserInfoDto(user);
+    }
+
+    @Override
+    public UserResponseDto updateUserInfo(UserUpdateRequestDto requestDto) {
+        User user = authenticationService.getAuthenticatedUser();
+        user.setFullName(requestDto.getFullName());
+        if (requestDto.getAvatarUrl() != null) {
+            user.setAvatarUrl(requestDto.getAvatarUrl());
+        }
+        return userMapper.toFullUserInfoDto(userRepository.save(user));
+    }
+
+    @Override
+    public UserResponseDto updateUserPassword(UserUpdatePasswordRequestDto requestDto) {
+        User user = authenticationService.getAuthenticatedUser();
+        user.setPasswordHash(passwordEncoder.encode(requestDto.getPasswordHash()));
+        return userMapper.toFullUserInfoDto(userRepository.save(user));
     }
 }
