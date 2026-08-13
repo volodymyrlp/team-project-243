@@ -5,6 +5,7 @@ import org.mapstruct.Mapping;
 import travelplanner.config.MapperConfig;
 import travelplanner.dto.user.UserRegisterRequestDto;
 import travelplanner.dto.user.UserRegisterResponseDto;
+import travelplanner.dto.user.UserResponseDto;
 import travelplanner.entity.User;
 
 @Mapper(config = MapperConfig.class)
@@ -15,4 +16,6 @@ public interface UserMapper {
     User toModel(UserRegisterRequestDto requestDto);
 
     UserRegisterResponseDto toDto(User user);
+
+    UserResponseDto toFullUserInfoDto(User user);
 }
