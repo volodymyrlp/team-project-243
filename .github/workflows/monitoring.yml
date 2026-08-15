@@ -82,6 +82,28 @@ jobs:
           pip install --quiet prometheus-remote-writer
           python .github/scripts/push_metrics.py probe.txt
 
+      - name: Keep the Supabase storage project from pausing
+        env:
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "SUPABASE_ANON_KEY is not set, so nothing is keeping the project awake."
+            echo "A free Supabase project pauses after 7 days without a DATABASE request."
+            echo "Storage traffic alone does not reset that timer, and while the project"
+            echo "is paused every uploaded image is unreachable. See docs/STORAGE.md."
+            exit 0
+          fi
+          code=$(curl -sS -o /dev/null -w '%{http_code}' \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            "https://gvuchidiqyxjrpzjsnjb.supabase.co/rest/v1/keepalive?select=id&limit=1")
+          echo "Supabase answered $code"
+          if [ "$code" != "200" ]; then
+            echo "The keep-alive query failed, so the pause timer was probably not reset."
+            echo "Check that the keepalive table and its anon select policy still exist."
+            exit 1
+          fi
+
       - name: Fail loudly when production is down
         if: steps.probe.outputs.prod_up != '1'
         run: |
