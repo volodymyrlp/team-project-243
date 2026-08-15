@@ -27,6 +27,16 @@ services:
         sync: false
       - key: JWT_EXPIRATION
         value: '3600000'
+      - key: SUPABASE_STORAGE_BUCKET
+        value: user-images
+      - key: SUPABASE_S3_ENDPOINT
+        value: https://gvuchidiqyxjrpzjsnjb.storage.supabase.co/storage/v1/s3
+      - key: SUPABASE_S3_REGION
+        value: eu-west-1
+      - key: SUPABASE_S3_ACCESS_KEY_ID
+        sync: false
+      - key: SUPABASE_S3_SECRET_ACCESS_KEY
+        sync: false
 
   - type: web
     name: travel-planner-backend-staging
@@ -56,3 +66,13 @@ services:
         sync: false
       - key: JWT_EXPIRATION
         value: '3600000'
+      - key: SUPABASE_STORAGE_BUCKET
+        value: user-images-staging
+      - key: SUPABASE_S3_ENDPOINT
+        value: https://gvuchidiqyxjrpzjsnjb.storage.supabase.co/storage/v1/s3
+      - key: SUPABASE_S3_REGION
+        value: eu-west-1
+      - key: SUPABASE_S3_ACCESS_KEY_ID
+        sync: false
+      - key: SUPABASE_S3_SECRET_ACCESS_KEY
+        sync: false
