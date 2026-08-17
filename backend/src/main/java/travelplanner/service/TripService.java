@@ -1,5 +1,6 @@
 package travelplanner.service;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -9,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import travelplanner.dto.trip.TripCreateRequest;
 import travelplanner.dto.trip.TripResponse;
 import travelplanner.entity.Trip;
+import travelplanner.entity.TripDay;
 import travelplanner.entity.User;
 import travelplanner.exception.EntityNotFoundException;
 import travelplanner.mapper.TripMapper;
@@ -34,7 +36,18 @@ public class TripService {
                         "User not found with id: " + userId));
 
         Trip trip = tripMapper.toEntity(request);
-        trip.setUser(user);
+        trip.setOwner(user);
+
+        LocalDate start = request.getStartDate();
+        LocalDate end = request.getEndDate();
+        int dayNum = 1;
+        for (LocalDate date = start; !date.isAfter(end); date = date.plusDays(1)) {
+            TripDay day = new TripDay();
+            day.setTrip(trip);
+            day.setDayNumber(dayNum++);
+            day.setDate(date);
+            trip.getTripDays().add(day);
+        }
 
         Trip savedTrip = tripRepository.save(trip);
         return tripMapper.toResponse(savedTrip);
@@ -42,7 +55,7 @@ public class TripService {
 
     @Transactional(readOnly = true)
     public List<TripResponse> getUserTrips(UUID userId) {
-        return tripRepository.findAllByUser_UserId(userId).stream()
+        return tripRepository.findAllByOwner_UserId(userId).stream()
                 .map(tripMapper::toResponse)
                 .collect(Collectors.toList());
     }

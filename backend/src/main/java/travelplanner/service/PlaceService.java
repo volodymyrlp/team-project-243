@@ -7,12 +7,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import travelplanner.dto.geocoding.NominatimResponseDto;
+import travelplanner.entity.Itinerary;
 import travelplanner.entity.Place;
 import travelplanner.entity.Trip;
-import travelplanner.entity.TripPlace;
+import travelplanner.entity.TripDay;
 import travelplanner.exception.EntityNotFoundException;
 import travelplanner.repository.PlaceRepository;
-import travelplanner.repository.TripPlaceRepository;
 import travelplanner.repository.TripRepository;
 
 @Service
@@ -21,7 +21,6 @@ public class PlaceService {
 
     private final PlaceRepository placeRepository;
     private final TripRepository tripRepository;
-    private final TripPlaceRepository tripPlaceRepository;
     private final NominatimClientService nominatimClientService;
 
     @Transactional
@@ -46,12 +45,27 @@ public class PlaceService {
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Trip not found with id: " + tripId));
 
-        TripPlace tripPlace = new TripPlace();
-        tripPlace.setTrip(trip);
-        tripPlace.setPlace(savedPlace);
-        tripPlace.setDayNumber(1);
-        tripPlace.setOrderIndex(1);
-        tripPlaceRepository.save(tripPlace);
+        TripDay tripDay = trip.getTripDays().stream()
+                .filter(d -> d.getDayNumber() == 1)
+                .findFirst()
+                .orElseGet(() -> {
+                    TripDay newDay = new TripDay();
+                    newDay.setTrip(trip);
+                    newDay.setDayNumber(1);
+                    newDay.setDate(null);
+                    trip.getTripDays().add(newDay);
+                    return newDay;
+                });
+
+        Itinerary itinerary = new Itinerary();
+        itinerary.setTripDay(tripDay);
+        itinerary.setPlace(savedPlace);
+        itinerary.setVisitOrder(1);
+        itinerary.setNotes(null);
+        itinerary.setTimeSpentMinutes(null);
+        tripDay.getItineraries().add(itinerary);
+
+        tripRepository.save(trip);
 
         return savedPlace;
     }

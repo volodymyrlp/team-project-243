@@ -13,30 +13,36 @@ import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
-@Table(name = "trip_places")
+@Table(name = "itineraries")
 @Getter
 @Setter
 @NoArgsConstructor
-public class TripPlace {
+public class Itinerary {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "trip_place_id", columnDefinition = "VARCHAR(36)", nullable = false)
-    private UUID tripPlaceId;
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(name = "itinerary_id", columnDefinition = "VARCHAR(36)", nullable = false)
+    private UUID itineraryId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "trip_id", nullable = false)
-    private Trip trip;
+    @JoinColumn(name = "day_id", nullable = false)
+    private TripDay tripDay;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "place_id", nullable = false)
     private Place place;
 
-    @Column(name = "day_number", nullable = false)
-    private Integer dayNumber;
+    @Column(name = "visit_order", nullable = false)
+    private Integer visitOrder;
 
-    @Column(name = "order_index", nullable = false)
-    private Integer orderIndex;
+    @Column(name = "notes", columnDefinition = "TEXT")
+    private String notes;
+
+    @Column(name = "time_spent_minutes")
+    private Integer timeSpentMinutes;
 }
