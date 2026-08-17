@@ -17,3 +17,5 @@ databaseChangeLog:
       file: db/changelog/changes/08-create-reviews.sql
   - include:
       file: db/changelog/changes/09-create-countries.sql
+  - include:
+      file: db/changelog/changes/10-create-trip-management-schema.sql
