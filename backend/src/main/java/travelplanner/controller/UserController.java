@@ -14,7 +14,7 @@ import travelplanner.dto.user.UserUpdateRequestDto;
 import travelplanner.service.user.UserService;
 
 @RestController
-@RequestMapping("/api/users")
+@RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
 public class UserController {
     private final UserService userService;
