@@ -62,6 +62,11 @@
 			<groupId>org.liquibase</groupId>
 			<artifactId>liquibase-core</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>software.amazon.awssdk</groupId>
+			<artifactId>s3</artifactId>
+			<version>2.25.10</version>
+		</dependency>
 
 		<!-- MapStruct & Lombok -->
 		<dependency>

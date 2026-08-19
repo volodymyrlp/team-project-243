@@ -1,6 +1,13 @@
 jwt:
   secret: ${JWT_SECRET}
   expiration: 3600000
+supabase:
+  s3:
+    endpoint: ${SUPABASE_S3_ENDPOINT}
+    region: ${SUPABASE_S3_REGION:eu-west-1}
+    access-key-id: ${SUPABASE_S3_ACCESS_KEY_ID}
+    secret-access-key: ${SUPABASE_S3_SECRET_ACCESS_KEY}
+    bucket: ${SUPABASE_STORAGE_BUCKET:user-images-staging}
 spring:
   application:
     name: demo
