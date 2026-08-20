@@ -78,6 +78,23 @@ jobs:
             exit 1
           fi
 
+      - name: Login is reachable without a token
+        run: |
+          code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 60 \
+            -X POST -H 'Content-Type: application/json' -d '{}' \
+            "$BACKEND_URL/api/v1/auth/login")
+          echo "POST /api/v1/auth/login -> $code"
+          if [ "$code" = "401" ]; then
+            echo "Login itself answered 401, so the endpoint is behind the JWT filter."
+            echo "SecurityConfig must permitAll the auth paths, and the pattern there has"
+            echo "to match the controller's own mapping. Nobody can log in or register."
+            exit 1
+          fi
+          if [ "$code" -ge 500 ]; then
+            echo "Login answered $code."
+            exit 1
+          fi
+
       - name: Frontend serves the app
         run: |
           code=$(curl -sS -o index.html -w '%{http_code}' --max-time 60 "$FRONTEND_URL/")
@@ -122,7 +139,7 @@ jobs:
             -H "Origin: $FRONTEND_URL" \
             -H "Access-Control-Request-Method: POST" \
             -H "Access-Control-Request-Headers: content-type" \
-            "$BACKEND_URL/api/auth/registration")
+            "$BACKEND_URL/api/v1/auth/registration")
           cat cors.txt
           if [ "$code" != "200" ]; then
             echo "The preflight answered $code, so the browser blocks the real request."
