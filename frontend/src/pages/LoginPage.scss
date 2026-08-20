@@ -1,5 +1,5 @@
 @use "../styles/variables" as *;
-@use '../styles/waves';
+@use "../styles/waves";
 
 .login {
   min-height: 100vh;
@@ -34,6 +34,25 @@
   &-hero,
   &-form {
     flex: 1 1 50%;
+    &__back {
+      align-self: flex-start;
+
+      color: #64748b;
+
+      font-size: 13px;
+      font-weight: 500;
+
+      text-decoration: none;
+
+      transition:
+        color 0.2s ease,
+        transform 0.2s ease;
+
+      &:hover {
+        color: $primary;
+        transform: translateX(-2px);
+      }
+    }
   }
 
   &-hero {
@@ -44,7 +63,7 @@
     position: relative;
     min-height: 300px;
     overflow: hidden;
-    
+
     border-radius: 24px;
 
     background: radial-gradient(
@@ -80,36 +99,58 @@
   &-form {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    padding: 30px 18px;
+    gap: 14px;
+
+    padding: 34px 24px;
 
     h3 {
       text-align: center;
-      font-size: 14px;
-      margin-bottom: 12px;
+
+      font-size: 24px;
+      line-height: 1.25;
+      font-weight: 600;
+
+      margin: 0 0 10px;
     }
 
     input {
       width: 100%;
       height: 52px;
 
+      box-sizing: border-box;
+
       border-radius: 14px;
-      border: none;
+      border: 1px solid transparent;
 
       background: $input-background;
 
-      padding: 0 14px;
+      padding: 0 16px;
 
       font-family: inherit;
-      font-size: 16px;
+      font-size: 15px;
       color: inherit;
+
+      transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease,
+        background 0.2s ease;
 
       &::placeholder {
         color: #9e9e9e;
       }
 
+      &:hover {
+        background: #f4f4f4;
+      }
+
       &:focus {
         outline: none;
+
+        border-color: $primary;
+
+        background: $surface;
+
+        box-shadow: 0 0 0 3px rgb(0 0 0 / 5%);
       }
     }
 
@@ -117,96 +158,208 @@
       width: 100%;
       height: 52px;
 
+      margin-top: 4px;
+
       border-radius: 14px;
       border: none;
 
       background: $primary;
       color: white;
-      font-size: 17px;
+
+      font-family: inherit;
+      font-size: 16px;
+      font-weight: 600;
 
       cursor: pointer;
-      font-family: inherit;
-    }
-  }
 
-  &-social-btn {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 10px;
+      transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease,
+        opacity 0.2s ease;
 
-    width: 100%;
-    height: 52px;
+      &:hover:not(:disabled) {
+        transform: translateY(-1px);
 
-    border-radius: 14px;
-    border: 0;
-    background: $secondary;
+        box-shadow: 0 8px 18px rgb(0 0 0 / 12%);
+      }
 
-    font-size: 15px;
-    cursor: pointer;
+      &:active:not(:disabled) {
+        transform: translateY(0);
+      }
 
-    > img {
-      height: 24px;
+      &:disabled {
+        cursor: not-allowed;
+        opacity: 0.65;
+      }
     }
 
     > p {
-      color: #5c5c5c;
+      text-align: center;
+
+      margin-top: 2px;
+
+      color: #777;
+
+      font-size: 14px;
+      line-height: 1.5;
     }
   }
 
-  &-or {
-    position: relative;
-
-    height: 24px;
-
-    opacity: 0.5;
-
-    &::before {
-      content: "";
-
-      position: absolute;
-      top: 50%;
-      left: 0;
-
-      width: 100%;
-      height: 1px;
-    
-      background: rgb(0 0 0 / 40%);
-    }
-
-    &::after {
-      content: "Or";
-
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      translate: -50% -50%;
-
-      background: $surface;
-      padding: 0 12px;
-      font-size: 12px;
-    }
-  }
-
-    .form-link {
+  .form-link {
     color: $primary;
+
     text-decoration: none;
-    font-weight: 500;
+    font-weight: 600;
+
+    margin-left: 3px;
+
+    transition: opacity 0.2s ease;
 
     &:hover {
       text-decoration: underline;
+      opacity: 0.8;
+    }
+  }
+
+  &-modal {
+    position: fixed;
+    inset: 0;
+
+    z-index: 100;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 20px;
+
+    background: rgb(15 23 42 / 45%);
+    backdrop-filter: blur(4px);
+
+    animation: login-modal-fade-in 0.2s ease;
+
+    &__content {
+      width: min(100%, 420px);
+
+      box-sizing: border-box;
+
+      padding: 36px 32px;
+
+      border-radius: 24px;
+
+      background: $surface;
+
+      box-shadow: 0 25px 60px rgb(0 0 0 / 20%);
+
+      text-align: center;
+
+      animation: login-modal-scale-in 0.2s ease;
+
+      h2 {
+        margin: 0 0 10px;
+
+        color: #0f172a;
+
+        font-size: 24px;
+        font-weight: 600;
+      }
+
+      p {
+        max-width: 340px;
+
+        margin: 0 auto 24px;
+
+        color: #64748b;
+
+        font-size: 14px;
+        line-height: 1.6;
+      }
+    }
+
+    &__icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      width: 58px;
+      height: 58px;
+
+      margin: 0 auto 20px;
+
+      border-radius: 50%;
+
+      color: #b42318;
+      background: #fef3f2;
+
+      font-size: 28px;
+      font-weight: 600;
+    }
+
+    &__button {
+      width: 100%;
+      height: 50px;
+
+      border: none;
+      border-radius: 14px;
+
+      color: #f9f9f9;
+      background: $primary;
+
+      font-family: inherit;
+      font-size: 16px;
+      font-weight: 600;
+
+      cursor: pointer;
+
+      transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
+
+      &:hover {
+        transform: translateY(-1px);
+
+        box-shadow: 0 8px 18px rgb(0 0 0 / 12%);
+      }
+
+      &:active {
+        transform: translateY(0);
+      }
     }
   }
 
   @media (width >= 640px) {
     &-card {
       flex-direction: row;
+
       width: clamp(300px, 90vw, 740px);
+
       padding: 8px 0 8px 8px;
     }
 
     &-form {
-      padding: 30px;
+      padding: 40px;
     }
+  }
+}
+
+@keyframes login-modal-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes login-modal-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }

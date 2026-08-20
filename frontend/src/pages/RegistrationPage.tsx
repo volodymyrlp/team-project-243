@@ -1,8 +1,7 @@
 import { useState } from "react";
-import google from "../assets/images/google.svg";
 import "./RegistrationPage.scss";
 import { registerUser } from "../api/auth";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 interface RegistrationForm {
   fullName: string;
@@ -11,7 +10,11 @@ interface RegistrationForm {
   confirmPassword: string;
 }
 
+type ModalType = "success" | "error" | null;
+
 export const RegistrationPage = () => {
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState<RegistrationForm>({
     fullName: "",
     email: "",
@@ -20,30 +23,31 @@ export const RegistrationPage = () => {
   });
 
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
+  const [modal, setModal] = useState<ModalType>(null);
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
       [event.target.name]: event.target.value,
     });
+
+    setError("");
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
     setError("");
-    setSuccess("");
 
     if (formData.passwordHash.length < 8 || formData.passwordHash.length > 20) {
-      setError("Password must be 8-20 characters");
+      setError("Password must be 8-20 characters.");
 
       return;
     }
 
     if (formData.passwordHash !== formData.confirmPassword) {
-      setError("Passwords do not match");
+      setError("Passwords do not match.");
 
       return;
     }
@@ -53,19 +57,35 @@ export const RegistrationPage = () => {
 
       await registerUser(formData);
 
-      setSuccess("Account created successfully!");
-
       setFormData({
         fullName: "",
         email: "",
         passwordHash: "",
         confirmPassword: "",
       });
+
+      setModal("success");
     } catch (error) {
-      setError(error instanceof Error ? error.message : "Something went wrong");
+      setModal("error");
+
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong. Please try again.",
+      );
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCloseModal = () => {
+    setModal(null);
+    setError("");
+  };
+
+  const handleLogin = () => {
+    setModal(null);
+    navigate("/login");
   };
 
   return (
@@ -88,20 +108,13 @@ export const RegistrationPage = () => {
           className='registration-form'
           onSubmit={handleSubmit}
         >
-          <h3>Create your account</h3>
-
-          <button
-            type='button'
-            className='registration-social-btn'
+          <Link
+            to='/'
+            className='registration-form__back'
           >
-            <img
-              src={google}
-              alt='Google'
-            />
-            Sign up with Google
-          </button>
-
-          <span className='registration-or' />
+            ← Back to home
+          </Link>
+          <h3>Create your account</h3>
 
           <input
             name='fullName'
@@ -141,14 +154,13 @@ export const RegistrationPage = () => {
 
           {error && <p className='error-message'>{error}</p>}
 
-          {success && <p className='success-message'>{success}</p>}
-
           <button
             type='submit'
             disabled={loading}
           >
             {loading ? "Creating..." : "Sign up"}
           </button>
+
           <p>
             Already have an account?{" "}
             <Link
@@ -160,6 +172,62 @@ export const RegistrationPage = () => {
           </p>
         </form>
       </div>
+
+      {modal && (
+        <div
+          className='registration-modal'
+          onMouseDown={handleCloseModal}
+        >
+          <div
+            className='registration-modal__content'
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            {modal === "success" ? (
+              <>
+                <div className='registration-modal__icon registration-modal__icon--success'>
+                  ✓
+                </div>
+
+                <h2>Account created!</h2>
+
+                <p>
+                  Your account has been created successfully. You can now log in
+                  and start planning your trips.
+                </p>
+
+                <button
+                  type='button'
+                  className='registration-modal__button'
+                  onClick={handleLogin}
+                >
+                  Log in
+                </button>
+              </>
+            ) : (
+              <>
+                <div className='registration-modal__icon registration-modal__icon--error'>
+                  !
+                </div>
+
+                <h2>Registration failed</h2>
+
+                <p>
+                  {error ||
+                    "We couldn't create your account. Please try again."}
+                </p>
+
+                <button
+                  type='button'
+                  className='registration-modal__button'
+                  onClick={handleCloseModal}
+                >
+                  Try again
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </section>
   );
 };

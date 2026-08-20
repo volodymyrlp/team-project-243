@@ -8,6 +8,7 @@ import austria from "../assets/images/AustriaImage.jpg";
 import france from "../assets/images/FranceImage.jpg";
 
 import "./MainPage.scss";
+import { Header } from "../components/Header";
 
 interface Country {
   name: string;
@@ -63,33 +64,8 @@ const countries: Country[] = [
 export const MainPage = () => {
   return (
     <main className='main-before-auth'>
-
       <section className='main-before-auth__hero'>
-        <header className='main-before-auth__header'>
-          <Link
-            to='/'
-            className='main-before-auth__brand'
-          >
-            <img
-              src={logo}
-              alt='MriyaTrip'
-              className='main-before-auth__logo'
-            />
-
-            <span className='main-before-auth__brand-name'>MriyaTrip</span>
-          </Link>
-
-          <nav className='main-before-auth__nav'>
-            <Link to='/login'>Log in</Link>
-
-            <Link
-              to='/registration'
-              className='main-before-auth__nav-button'
-            >
-              Sign up
-            </Link>
-          </nav>
-        </header>
+        <Header />
 
         <div className='main-before-auth__hero-content'>
           <span className='main-before-auth__eyebrow'>
@@ -118,7 +94,6 @@ export const MainPage = () => {
           </Link>
         </div>
       </section>
-
 
       <section className='main-before-auth__countries'>
         <div className='main-before-auth__section-heading'>
@@ -219,7 +194,6 @@ export const MainPage = () => {
           </article>
         </div>
       </section>
-
 
       <section className='main-before-auth__final-cta'>
         <div className='main-before-auth__final-cta-content'>
