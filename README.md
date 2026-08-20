@@ -19,14 +19,14 @@ and see them on a map.
 - Database → **Aiven (MySQL, free tier)** — schema applied by Liquibase
 
 The backend is the API only; it has no UI. `SecurityConfig` leaves `/actuator/health`,
-`/api/auth/**`, `/swagger-ui/**` and `/error` open and requires a JWT for everything else, so
+`/api/v1/auth/**`, `/swagger-ui/**` and `/error` open and requires a JWT for everything else, so
 `/api/v1/trips` answers `401` without a token. CORS is read from `CORS_ALLOWED_ORIGINS`, which in
 production is the Vercel domain, so the deployed frontend can call the API.
 
 The free instances sleep when idle, so the first request can take 50 s or more. A scheduled
-`Keep-alive` workflow pings the backend every 6 hours, which also keeps the database from
-powering itself off. Deployment details, and the two free-tier traps that already broke a
-release, live in [docs/DEPLOY.md](docs/DEPLOY.md).
+`Monitoring` workflow wakes the backend, staging and the frontend every 6 hours and records how
+long each took, which also keeps the database from powering itself off. Deployment details, and
+the two free-tier traps that already broke a release, live in [docs/DEPLOY.md](docs/DEPLOY.md).
 
 ## Repository layout (monorepo)
 ```

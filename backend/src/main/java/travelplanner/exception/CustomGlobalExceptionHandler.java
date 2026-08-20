@@ -55,6 +55,12 @@ public class CustomGlobalExceptionHandler extends ResponseEntityExceptionHandler
                 HttpStatus.CONFLICT);
     }
 
+    @ExceptionHandler(InvalidFileException.class)
+    public ResponseEntity<Object> handlerInvalidFileException(InvalidFileException ex) {
+        return new ResponseEntity<>("Invalid file exception occurred. " + ex.getMessage(),
+                HttpStatus.CONFLICT);
+    }
+
     private String getErrorMassage(ObjectError e) {
         if (e instanceof FieldError) {
             String field = ((FieldError) e).getField();

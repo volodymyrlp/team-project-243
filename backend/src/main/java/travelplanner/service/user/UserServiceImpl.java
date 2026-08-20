@@ -15,6 +15,7 @@ import travelplanner.exception.RegistrationException;
 import travelplanner.mapper.UserMapper;
 import travelplanner.repository.UserRepository;
 import travelplanner.security.AuthenticationService;
+import travelplanner.service.StorageService;
 
 @Service
 @Transactional
@@ -24,6 +25,7 @@ public class UserServiceImpl implements UserService {
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationService authenticationService;
+    private final StorageService storageService;
 
     @Override
     public UserRegisterResponseDto register(UserRegisterRequestDto requestDto)
@@ -41,17 +43,30 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserResponseDto getUserInfo() {
         User user = authenticationService.getAuthenticatedUser();
-        return userMapper.toFullUserInfoDto(user);
+        UserResponseDto dto = userMapper.toFullUserInfoDto(user);
+        if (user.getAvatarUrl() != null && !user.getAvatarUrl().isBlank()) {
+            dto.setAvatarUrl(storageService.generateGetPresignedUrl(user.getAvatarUrl()));
+        }
+        return dto;
     }
 
     @Override
     public UserResponseDto updateUserInfo(UserUpdateRequestDto requestDto) {
         User user = authenticationService.getAuthenticatedUser();
         user.setFullName(requestDto.getFullName());
-        if (requestDto.getAvatarUrl() != null) {
+
+        if (requestDto.getAvatarUrl() != null && !requestDto.getAvatarUrl().isBlank()) {
             user.setAvatarUrl(requestDto.getAvatarUrl());
         }
-        return userMapper.toFullUserInfoDto(userRepository.save(user));
+
+        User savedUser = userRepository.save(user);
+        UserResponseDto dto = userMapper.toFullUserInfoDto(savedUser);
+
+        if (savedUser.getAvatarUrl() != null && !savedUser.getAvatarUrl().isBlank()) {
+            dto.setAvatarUrl(storageService.generateGetPresignedUrl(savedUser.getAvatarUrl()));
+        }
+
+        return dto;
     }
 
     @Override

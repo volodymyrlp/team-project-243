@@ -1,0 +1,125 @@
+@use "../styles/variables" as *;
+
+.header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 10;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  width: 100%;
+  padding: 28px 6%;
+
+  &__brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    color: inherit;
+    text-decoration: none;
+  }
+
+  &__logo {
+    width: 44px;
+    height: 44px;
+    object-fit: contain;
+  }
+
+  &__brand-name {
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.7px;
+  }
+
+  &__nav {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+
+    a {
+      color: #0f172a;
+      text-decoration: none;
+      font-size: 15px;
+      font-weight: 500;
+
+      transition: 0.2s ease;
+
+      &:hover {
+        color: $primary;
+      }
+    }
+  }
+
+  &__nav-button {
+    padding: 11px 20px;
+
+    border-radius: 12px;
+
+    background: $primary;
+    color: white !important;
+
+    &:hover {
+      opacity: 0.9;
+    }
+  }
+
+  &__profile {
+    padding: 11px 20px;
+
+    border-radius: 12px;
+
+    background: $primary;
+    color: white !important;
+  }
+
+  &__logout {
+    padding: 11px 20px;
+
+    border: 1px solid $primary;
+    border-radius: 12px;
+
+    background: transparent;
+    color: $primary;
+
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 500;
+
+    cursor: pointer;
+
+    transition: 0.2s ease;
+
+    &:hover {
+      background: $primary;
+      color: white;
+    }
+  }
+}
+
+@media (width < 700px) {
+  .header {
+    padding: 20px;
+  }
+
+  .header__brand-name {
+    font-size: 20px;
+  }
+
+  .header__logo {
+    width: 38px;
+    height: 38px;
+  }
+
+  .header__nav {
+    gap: 10px;
+  }
+}
+
+@media (width < 480px) {
+  .header__brand-name {
+    display: none;
+  }
+}

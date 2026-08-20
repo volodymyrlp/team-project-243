@@ -15,3 +15,10 @@ spring:
         dialect: org.hibernate.dialect.H2Dialect
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.yaml
+supabase:
+  s3:
+    endpoint: ${SUPABASE_S3_ENDPOINT:https://example.invalid/storage/v1/s3}
+    region: ${SUPABASE_S3_REGION:eu-west-1}
+    access-key-id: ${SUPABASE_S3_ACCESS_KEY_ID:dummy}
+    secret-access-key: ${SUPABASE_S3_SECRET_ACCESS_KEY:dummy}
+    bucket: ${SUPABASE_STORAGE_BUCKET:user-images-staging}

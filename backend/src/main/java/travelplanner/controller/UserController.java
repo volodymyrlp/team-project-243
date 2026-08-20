@@ -14,7 +14,7 @@ import travelplanner.dto.user.UserUpdateRequestDto;
 import travelplanner.service.user.UserService;
 
 @RestController
-@RequestMapping("/api/users")
+@RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
 public class UserController {
     private final UserService userService;
@@ -25,7 +25,7 @@ public class UserController {
     }
 
     @PutMapping("/me")
-    public ResponseEntity<UserResponseDto> updateUserInfo(
+    public ResponseEntity<UserResponseDto> updateUserFullName(
             @RequestBody @Valid UserUpdateRequestDto requestDto) {
         return ResponseEntity.ok(userService.updateUserInfo(requestDto));
     }
