@@ -17,7 +17,7 @@ import travelplanner.security.AuthenticationService;
 import travelplanner.service.user.UserService;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
 public class Authenticate {
     private final UserService userService;
