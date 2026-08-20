@@ -1,0 +1,62 @@
+name: Env check
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  env-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Every variable the app cannot start without is set on both services
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        run: |
+          if [ -z "$RENDER_API_KEY" ]; then
+            echo "RENDER_API_KEY is not set, so this check cannot run."
+            exit 1
+          fi
+
+          # A placeholder written as ${VAR} aborts startup when VAR is absent,
+          # while ${VAR:something} falls back. So the required list is simply
+          # every placeholder with no default, read from the file itself —
+          # a new one starts being checked the day it is added.
+          required=$(grep -oE '\$\{[A-Z0-9_]+\}' \
+            backend/src/main/resources/application.yml | tr -d '${}' | sort -u)
+          echo "Required, derived from application.yml:"
+          echo "$required" | sed 's/^/  /'
+
+          missing=0
+          for svc in prod:srv-d9htdbbeo5us73dl8o3g staging:srv-d9iecvnavr4c73amm6e0; do
+            name=${svc%%:*}
+            id=${svc#*:}
+
+            # Only the keys are ever read out of this response. The values are
+            # in there too, so nothing here may echo the body.
+            keys=$(curl -sS --fail-with-body \
+              -H "Authorization: Bearer $RENDER_API_KEY" \
+              "https://api.render.com/v1/services/$id/env-vars?limit=100" \
+              | jq -r '.[].envVar.key' | sort -u)
+
+            echo
+            echo "$name:"
+            for var in $required; do
+              if echo "$keys" | grep -qx "$var"; then
+                echo "  ok      $var"
+              else
+                echo "  MISSING $var"
+                missing=1
+              fi
+            done
+          done
+
+          if [ "$missing" = "1" ]; then
+            echo
+            echo "A missing variable does not take the service down: Render keeps the"
+            echo "previous deploy live, so health stays green while the release silently"
+            echo "does not land. Set it in the dashboard under Environment before merging."
+            exit 1
+          fi
