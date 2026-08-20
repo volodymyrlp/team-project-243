@@ -1,5 +1,4 @@
 import { useState } from "react";
-import google from "../assets/images/google.svg";
 import "./LoginPage.scss";
 import { Link, useNavigate } from "react-router-dom";
 import { loginUser } from "../api/auth";
@@ -19,12 +18,15 @@ export const LoginPage = () => {
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
       [event.target.name]: event.target.value,
     });
+
+    setError("");
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -41,10 +43,21 @@ export const LoginPage = () => {
 
       navigate("/");
     } catch (error) {
-      setError(error instanceof Error ? error.message : "Something went wrong");
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Something went wrong. Please try again.";
+
+      setError(message);
+      setShowErrorModal(true);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCloseModal = () => {
+    setShowErrorModal(false);
+    setError("");
   };
 
   return (
@@ -67,20 +80,13 @@ export const LoginPage = () => {
           className='login-form'
           onSubmit={handleSubmit}
         >
-          <h3>Login to your account</h3>
-
-          <button
-            type='button'
-            className='login-social-btn'
+          <Link
+            to='/'
+            className='login-form__back'
           >
-            <img
-              src={google}
-              alt='Google'
-            />
-            Continue with Google
-          </button>
-
-          <span className='login-or' />
+            ← Back to home
+          </Link>
+          <h3>Login to your account</h3>
 
           <input
             name='email'
@@ -88,6 +94,7 @@ export const LoginPage = () => {
             placeholder='Email'
             value={formData.email}
             onChange={handleChange}
+            autoComplete='email'
             required
           />
 
@@ -97,10 +104,9 @@ export const LoginPage = () => {
             placeholder='Password'
             value={formData.password}
             onChange={handleChange}
+            autoComplete='current-password'
             required
           />
-
-          {error && <p className='error-message'>{error}</p>}
 
           <button
             type='submit'
@@ -120,6 +126,35 @@ export const LoginPage = () => {
           </p>
         </form>
       </div>
+
+      {showErrorModal && (
+        <div
+          className='login-modal'
+          onMouseDown={handleCloseModal}
+        >
+          <div
+            className='login-modal__content'
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className='login-modal__icon'>!</div>
+
+            <h2>Login failed</h2>
+
+            <p>
+              {error ||
+                "We couldn't log you in. Please check your email and password."}
+            </p>
+
+            <button
+              type='button'
+              className='login-modal__button'
+              onClick={handleCloseModal}
+            >
+              Try again
+            </button>
+          </div>
+        </div>
+      )}
     </section>
   );
 };
