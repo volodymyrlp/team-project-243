@@ -1,13 +1,16 @@
 package travelplanner.dto.trip;
 
-import java.time.LocalDate;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.UUID;
-import lombok.Data;
 
-@Data
-public class TripResponse {
-    private UUID tripId;
-    private String title;
-    private LocalDate startDate;
-    private LocalDate endDate;
-}
+public record TripResponse(
+        UUID tripId,
+        String title,
+        String description,
+        BigDecimal budget,
+        String currency,
+        String coverUrl,
+        Boolean isPublic,
+        LocalDateTime createdAt
+) {}

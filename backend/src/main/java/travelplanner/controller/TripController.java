@@ -1,9 +1,11 @@
 package travelplanner.controller;
 
 import jakarta.validation.Valid;
-import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -33,13 +35,16 @@ public class TripController {
             @AuthenticationPrincipal User user,
             @Valid @RequestBody TripCreateRequest request
     ) {
-        TripResponse response = tripService.createTrip(user.getUserId(), request);
+        TripResponse response = tripService.createTrip(request, user);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping
-    public ResponseEntity<List<TripResponse>> getUserTrips(@AuthenticationPrincipal User user) {
-        List<TripResponse> response = tripService.getUserTrips(user.getUserId());
+    public ResponseEntity<Page<TripResponse>> getMyTrips(
+            @AuthenticationPrincipal User user,
+            @PageableDefault(size = 10) Pageable pageable
+    ) {
+        Page<TripResponse> response = tripService.getMyTrips(user, pageable);
         return ResponseEntity.ok(response);
     }
 
