@@ -1,52 +1,32 @@
 package travelplanner.service;
 
-import java.time.LocalDate;
-import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import travelplanner.dto.trip.TripCreateRequest;
 import travelplanner.dto.trip.TripResponse;
 import travelplanner.entity.Trip;
-import travelplanner.entity.TripDay;
 import travelplanner.entity.User;
 import travelplanner.exception.EntityNotFoundException;
 import travelplanner.mapper.TripMapper;
 import travelplanner.repository.TripRepository;
-import travelplanner.repository.UserRepository;
 
 @Service
 @RequiredArgsConstructor
 public class TripService {
 
     private final TripRepository tripRepository;
-    private final UserRepository userRepository;
     private final TripMapper tripMapper;
 
     @Transactional
-    public TripResponse createTrip(UUID userId, TripCreateRequest request) {
-        if (request.getEndDate().isBefore(request.getStartDate())) {
-            throw new IllegalArgumentException("End date cannot be before start date");
-        }
-
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException(
-                        "User not found with id: " + userId));
-
+    public TripResponse createTrip(TripCreateRequest request, User currentUser) {
         Trip trip = tripMapper.toEntity(request);
-        trip.setOwner(user);
-
-        LocalDate start = request.getStartDate();
-        LocalDate end = request.getEndDate();
-        int dayNum = 1;
-        for (LocalDate date = start; !date.isAfter(end); date = date.plusDays(1)) {
-            TripDay day = new TripDay();
-            day.setTrip(trip);
-            day.setDayNumber(dayNum++);
-            day.setDate(date);
-            trip.getTripDays().add(day);
+        trip.setOwner(currentUser);
+        if (trip.getIsPublic() == null) {
+            trip.setIsPublic(false);
         }
 
         Trip savedTrip = tripRepository.save(trip);
@@ -54,10 +34,22 @@ public class TripService {
     }
 
     @Transactional(readOnly = true)
-    public List<TripResponse> getUserTrips(UUID userId) {
-        return tripRepository.findAllByOwner_UserId(userId).stream()
-                .map(tripMapper::toResponse)
-                .collect(Collectors.toList());
+    public Page<TripResponse> getMyTrips(User currentUser, Pageable pageable) {
+        Page<Trip> trips = tripRepository.findAllByOwnerOrderByCreatedAtDesc(currentUser, pageable);
+        return trips.map(tripMapper::toResponse);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<TripResponse> getPublicTripCatalog(String search, Pageable pageable) {
+        Page<Trip> trips;
+        if (search != null && !search.isBlank()) {
+            trips = tripRepository
+                    .findAllByIsPublicTrueAndTitleContainingIgnoreCaseOrderByCreatedAtDesc(
+                            search, pageable);
+        } else {
+            trips = tripRepository.findAllByIsPublicTrueOrderByCreatedAtDesc(pageable);
+        }
+        return trips.map(tripMapper::toResponse);
     }
 
     @Transactional(readOnly = true)

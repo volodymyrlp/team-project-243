@@ -1,19 +1,25 @@
 package travelplanner.dto.trip;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import java.time.LocalDate;
-import lombok.Data;
+import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
+import java.math.BigDecimal;
 
-@Data
-public class TripCreateRequest {
+public record TripCreateRequest(
+        @NotBlank(message = "Title cannot be blank")
+        @Size(max = 255, message = "Title must not exceed 255 characters")
+        String title,
 
-    @NotBlank(message = "Title cannot be blank")
-    private String title;
+        String description,
 
-    @NotNull(message = "Start date is required")
-    private LocalDate startDate;
+        @PositiveOrZero(message = "Budget must be zero or positive")
+        BigDecimal budget,
 
-    @NotNull(message = "End date is required")
-    private LocalDate endDate;
-}
+        @Size(max = 10, message = "Currency code must not exceed 10 characters")
+        String currency,
+
+        @Size(max = 500, message = "Cover URL must not exceed 500 characters")
+        String coverUrl,
+
+        Boolean isPublic
+) {}
