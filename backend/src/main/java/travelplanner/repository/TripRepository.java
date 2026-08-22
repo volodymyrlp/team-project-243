@@ -14,4 +14,9 @@ public interface TripRepository extends JpaRepository<Trip, UUID> {
     List<Trip> findAllByOwner_UserId(UUID userId);
 
     Page<Trip> findAllByOwnerOrderByCreatedAtDesc(User owner, Pageable pageable);
+
+    Page<Trip> findAllByIsPublicTrueOrderByCreatedAtDesc(Pageable pageable);
+
+    Page<Trip> findAllByIsPublicTrueAndTitleContainingIgnoreCaseOrderByCreatedAtDesc(
+            String title, Pageable pageable);
 }

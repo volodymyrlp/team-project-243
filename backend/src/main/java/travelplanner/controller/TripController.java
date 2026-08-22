@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import travelplanner.dto.trip.TripCreateRequest;
 import travelplanner.dto.trip.TripResponse;
@@ -45,6 +46,15 @@ public class TripController {
             @PageableDefault(size = 10) Pageable pageable
     ) {
         Page<TripResponse> response = tripService.getMyTrips(user, pageable);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/catalog")
+    public ResponseEntity<Page<TripResponse>> getPublicTripCatalog(
+            @RequestParam(required = false) String search,
+            @PageableDefault(size = 10) Pageable pageable
+    ) {
+        Page<TripResponse> response = tripService.getPublicTripCatalog(search, pageable);
         return ResponseEntity.ok(response);
     }
 
