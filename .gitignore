@@ -17,3 +17,6 @@ dist/
 .vscode/
 *.iml
 .DS_Store
+
+# --- foglamp scan (edit token is a secret) ---
+.foglamp/
