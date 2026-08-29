@@ -40,6 +40,19 @@ public class TripService {
     }
 
     @Transactional(readOnly = true)
+    public Page<TripResponse> getPublicTripCatalog(String search, Pageable pageable) {
+        Page<Trip> trips;
+        if (search != null && !search.isBlank()) {
+            trips = tripRepository
+                    .findAllByIsPublicTrueAndTitleContainingIgnoreCaseOrderByCreatedAtDesc(
+                            search, pageable);
+        } else {
+            trips = tripRepository.findAllByIsPublicTrueOrderByCreatedAtDesc(pageable);
+        }
+        return trips.map(tripMapper::toResponse);
+    }
+
+    @Transactional(readOnly = true)
     public TripResponse getTripById(UUID tripId) {
         Trip trip = tripRepository.findById(tripId).orElseThrow(
                 () -> new EntityNotFoundException("Trip not found with id: " + tripId));
