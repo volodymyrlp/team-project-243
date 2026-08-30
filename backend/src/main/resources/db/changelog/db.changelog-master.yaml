@@ -19,3 +19,7 @@ databaseChangeLog:
       file: db/changelog/changes/09-create-countries.sql
   - include:
       file: db/changelog/changes/10-create-trip-management-schema.sql
+  - include:
+      file: db/changelog/changes/11-add-tags-and-participants.sql
+  - include:
+      file: db/changelog/changes/12-add-photos-table.sql

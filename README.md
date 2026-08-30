@@ -34,6 +34,10 @@ the two free-tier traps that already broke a release, live in [docs/DEPLOY.md](d
 /frontend   — React + Vite SPA
 ```
 
+An interactive map of the architecture — the modules, the services they talk to and how the
+pieces connect — is published at <https://foglamp.dev/scan/mriyatrip-lplqrt>. It is an unlisted
+link and it expires on 27 November 2026.
+
 ## Local development
 1. Copy `.env.example` → `.env` and fill in the values. Optional for a first run —
    compose falls back to local defaults for everything except `ORS_API_KEY`.
