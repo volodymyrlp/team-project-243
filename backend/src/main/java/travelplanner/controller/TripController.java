@@ -1,6 +1,7 @@
 package travelplanner.controller;
 
 import jakarta.validation.Valid;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import travelplanner.dto.trip.PhotoResponse;
 import travelplanner.dto.trip.TripCreateRequest;
 import travelplanner.dto.trip.TripResponse;
 import travelplanner.entity.User;
@@ -79,6 +81,22 @@ public class TripController {
             @AuthenticationPrincipal User currentUser
     ) {
         TripResponse response = tripService.updateTripCover(tripId, file, currentUser);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping(value = "/{tripId}/photos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<PhotoResponse> uploadTripPhoto(
+            @PathVariable UUID tripId,
+            @RequestParam("file") MultipartFile file,
+            @AuthenticationPrincipal User currentUser
+    ) {
+        PhotoResponse response = tripService.uploadTripPhoto(tripId, file, currentUser);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{tripId}/photos")
+    public ResponseEntity<List<PhotoResponse>> getTripPhotos(@PathVariable UUID tripId) {
+        List<PhotoResponse> response = tripService.getTripPhotos(tripId);
         return ResponseEntity.ok(response);
     }
 

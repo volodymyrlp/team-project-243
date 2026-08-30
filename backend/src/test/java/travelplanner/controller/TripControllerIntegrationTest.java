@@ -5,12 +5,14 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +22,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
+import travelplanner.dto.trip.PhotoResponse;
 import travelplanner.dto.trip.TripResponse;
 import travelplanner.entity.User;
 import travelplanner.service.TripService;
@@ -67,5 +70,60 @@ class TripControllerIntegrationTest {
                         .with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.coverUrl").value("/uploads/test.jpg"));
+    }
+
+    @Test
+    void uploadPhoto_Success() throws Exception {
+        UUID tripId = UUID.randomUUID();
+        User currentUser = new User();
+        currentUser.setUserId(UUID.randomUUID());
+        currentUser.setEmail("test@example.com");
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "photo.jpg",
+                MediaType.IMAGE_JPEG_VALUE,
+                "some-photo-data".getBytes()
+        );
+
+        PhotoResponse response = new PhotoResponse(
+                UUID.randomUUID(),
+                "/uploads/photo.jpg",
+                currentUser.getUserId(),
+                LocalDateTime.now()
+        );
+
+        when(tripService.uploadTripPhoto(eq(tripId), any(), any())).thenReturn(response);
+
+        mockMvc.perform(multipart("/api/v1/trips/{tripId}/photos", tripId)
+                        .file(file)
+                        .with(user(currentUser))
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.url").value("/uploads/photo.jpg"))
+                .andExpect(jsonPath("$.uploaderId").value(currentUser.getUserId().toString()));
+    }
+
+    @Test
+    void getPhotos_Success() throws Exception {
+        UUID tripId = UUID.randomUUID();
+        User currentUser = new User();
+        currentUser.setUserId(UUID.randomUUID());
+        currentUser.setEmail("test@example.com");
+
+        PhotoResponse response = new PhotoResponse(
+                UUID.randomUUID(),
+                "/uploads/photo.jpg",
+                currentUser.getUserId(),
+                LocalDateTime.now()
+        );
+
+        when(tripService.getTripPhotos(eq(tripId))).thenReturn(List.of(response));
+
+        mockMvc.perform(get("/api/v1/trips/{tripId}/photos", tripId)
+                        .with(user(currentUser)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].url").value("/uploads/photo.jpg"))
+                .andExpect(jsonPath("$[0].uploaderId").value(currentUser.getUserId().toString()));
     }
 }
