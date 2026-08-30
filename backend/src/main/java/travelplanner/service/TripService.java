@@ -6,11 +6,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import travelplanner.dto.trip.TripCreateRequest;
 import travelplanner.dto.trip.TripResponse;
 import travelplanner.entity.Trip;
 import travelplanner.entity.User;
 import travelplanner.exception.EntityNotFoundException;
+import travelplanner.exception.ForbiddenException;
 import travelplanner.mapper.TripMapper;
 import travelplanner.repository.TripRepository;
 
@@ -20,6 +22,7 @@ public class TripService {
 
     private final TripRepository tripRepository;
     private final TripMapper tripMapper;
+    private final FileStorageService fileStorageService;
 
     @Transactional
     public TripResponse createTrip(TripCreateRequest request, User currentUser) {
@@ -65,5 +68,20 @@ public class TripService {
             throw new EntityNotFoundException("Trip not found with id: " + tripId);
         }
         tripRepository.deleteById(tripId);
+    }
+
+    @Transactional
+    public TripResponse updateTripCover(UUID tripId, MultipartFile file, User currentUser) {
+        Trip trip = tripRepository.findById(tripId).orElseThrow(
+                () -> new EntityNotFoundException("Trip not found with id: " + tripId));
+
+        if (!trip.getOwner().getUserId().equals(currentUser.getUserId())) {
+            throw new ForbiddenException("You do not have permission to update this trip");
+        }
+
+        String coverUrl = fileStorageService.uploadFile(file);
+        trip.setCoverUrl(coverUrl);
+        Trip savedTrip = tripRepository.save(trip);
+        return tripMapper.toResponse(savedTrip);
     }
 }
