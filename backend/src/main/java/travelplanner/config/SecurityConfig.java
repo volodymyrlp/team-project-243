@@ -67,7 +67,8 @@ public class SecurityConfig {
                                         "/api/v1/auth/**",
                                         "/api/v1/landing/**",
                                         "/api/v1/trips/catalog",
-                                        "/error"
+                                        "/error",
+                                        "/uploads/**"
                                 )
                                 .permitAll()
                                 .anyRequest()
