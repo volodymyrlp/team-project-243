@@ -100,6 +100,15 @@ public class TripController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/{tripId}/clone")
+    public ResponseEntity<TripResponse> cloneTrip(
+            @PathVariable UUID tripId,
+            @AuthenticationPrincipal User currentUser
+    ) {
+        TripResponse response = tripService.cloneTrip(tripId, currentUser);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
     @ExceptionHandler(EntityNotFoundException.class)
     public ResponseEntity<String> handleNotFound(EntityNotFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
