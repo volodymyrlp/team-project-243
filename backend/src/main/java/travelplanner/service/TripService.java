@@ -5,14 +5,17 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import travelplanner.dto.trip.PhotoResponse;
 import travelplanner.dto.trip.TripCreateRequest;
 import travelplanner.dto.trip.TripResponse;
+import travelplanner.entity.Itinerary;
 import travelplanner.entity.Photo;
 import travelplanner.entity.Trip;
+import travelplanner.entity.TripDay;
 import travelplanner.entity.User;
 import travelplanner.exception.EntityNotFoundException;
 import travelplanner.exception.ForbiddenException;
@@ -117,5 +120,49 @@ public class TripService {
         }
         List<Photo> photos = photoRepository.findAllByTripTripId(tripId);
         return tripMapper.toPhotoResponseList(photos);
+    }
+
+    @Transactional
+    public TripResponse cloneTrip(UUID originalTripId, User currentUser) {
+        Trip originalTrip = tripRepository.findById(originalTripId)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Trip not found with id: " + originalTripId));
+
+        if (!originalTrip.getIsPublic()
+                && !originalTrip.getOwner().getUserId().equals(currentUser.getUserId())) {
+            throw new AccessDeniedException("You do not have access to this trip");
+        }
+
+        Trip clonedTrip = new Trip();
+        clonedTrip.setTitle(originalTrip.getTitle() + " (Copy)");
+        clonedTrip.setDescription(originalTrip.getDescription());
+        clonedTrip.setBudget(originalTrip.getBudget());
+        clonedTrip.setCurrency(originalTrip.getCurrency());
+        clonedTrip.setCoverUrl(originalTrip.getCoverUrl());
+        clonedTrip.setOwner(currentUser);
+        clonedTrip.setIsPublic(false);
+        clonedTrip.setTags(new java.util.HashSet<>(originalTrip.getTags()));
+
+        for (TripDay originalDay : originalTrip.getTripDays()) {
+            TripDay clonedDay = new TripDay();
+            clonedDay.setTrip(clonedTrip);
+            clonedDay.setDayNumber(originalDay.getDayNumber());
+            clonedDay.setDate(originalDay.getDate());
+
+            for (Itinerary originalItinerary : originalDay.getItineraries()) {
+                Itinerary clonedItinerary = new Itinerary();
+                clonedItinerary.setTripDay(clonedDay);
+                clonedItinerary.setVisitOrder(originalItinerary.getVisitOrder());
+                clonedItinerary.setNotes(originalItinerary.getNotes());
+                clonedItinerary.setTimeSpentMinutes(originalItinerary.getTimeSpentMinutes());
+                clonedItinerary.setPlace(originalItinerary.getPlace());
+                clonedDay.getItineraries().add(clonedItinerary);
+            }
+
+            clonedTrip.getTripDays().add(clonedDay);
+        }
+
+        Trip savedTrip = tripRepository.save(clonedTrip);
+        return tripMapper.toResponse(savedTrip);
     }
 }
