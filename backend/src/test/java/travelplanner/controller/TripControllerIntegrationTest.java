@@ -7,6 +7,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -125,5 +126,33 @@ class TripControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].url").value("/uploads/photo.jpg"))
                 .andExpect(jsonPath("$[0].uploaderId").value(currentUser.getUserId().toString()));
+    }
+
+    @Test
+    void cloneTrip_Success() throws Exception {
+        UUID tripId = UUID.randomUUID();
+        User currentUser = new User();
+        currentUser.setUserId(UUID.randomUUID());
+        currentUser.setEmail("test@example.com");
+
+        TripResponse response = new TripResponse(
+                UUID.randomUUID(),
+                "My Trip (Copy)",
+                "Description",
+                BigDecimal.valueOf(1000),
+                "USD",
+                "/uploads/test.jpg",
+                false,
+                LocalDateTime.now()
+        );
+
+        when(tripService.cloneTrip(eq(tripId), any())).thenReturn(response);
+
+        mockMvc.perform(post("/api/v1/trips/{tripId}/clone", tripId)
+                        .with(user(currentUser))
+                        .with(csrf()))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.title").value("My Trip (Copy)"))
+                .andExpect(jsonPath("$.isPublic").value(false));
     }
 }
