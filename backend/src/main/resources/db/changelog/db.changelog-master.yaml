@@ -25,4 +25,3 @@ databaseChangeLog:
       file: db/changelog/changes/12-add-photos-table.sql
   - include:
       file: db/changelog/changes/13-add-trip-fields.sql
-
