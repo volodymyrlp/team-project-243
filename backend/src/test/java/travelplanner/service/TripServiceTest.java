@@ -23,6 +23,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
+import travelplanner.dto.trip.TripCreateRequest;
 import travelplanner.dto.trip.TripResponse;
 import travelplanner.entity.Itinerary;
 import travelplanner.entity.Place;
@@ -62,6 +63,9 @@ class TripServiceTest {
         Trip originalTrip = new Trip();
         originalTrip.setTripId(originalTripId);
         originalTrip.setTitle("Paris Tour");
+        originalTrip.setDestination("Paris");
+        originalTrip.setStartDate(LocalDate.of(2026, 9, 1));
+        originalTrip.setEndDate(LocalDate.of(2026, 9, 5));
         originalTrip.setDescription("A wonderful tour");
         originalTrip.setBudget(BigDecimal.valueOf(1500));
         originalTrip.setCurrency("EUR");
@@ -93,6 +97,9 @@ class TripServiceTest {
         TripResponse expectedResponse = new TripResponse(
                 UUID.randomUUID(),
                 "Paris Tour (Copy)",
+                "Paris",
+                LocalDate.of(2026, 9, 1),
+                LocalDate.of(2026, 9, 5),
                 "A wonderful tour",
                 BigDecimal.valueOf(1500),
                 "EUR",
@@ -110,6 +117,9 @@ class TripServiceTest {
 
         assertNotNull(result);
         assertEquals(expectedResponse.title(), result.title());
+        assertEquals(expectedResponse.destination(), result.destination());
+        assertEquals(expectedResponse.startDate(), result.startDate());
+        assertEquals(expectedResponse.endDate(), result.endDate());
         assertFalse(result.isPublic());
 
         ArgumentCaptor<Trip> tripCaptor = ArgumentCaptor.forClass(Trip.class);
@@ -118,6 +128,9 @@ class TripServiceTest {
 
         assertNull(clonedTrip.getTripId());
         assertEquals("Paris Tour (Copy)", clonedTrip.getTitle());
+        assertEquals("Paris", clonedTrip.getDestination());
+        assertEquals(LocalDate.of(2026, 9, 1), clonedTrip.getStartDate());
+        assertEquals(LocalDate.of(2026, 9, 5), clonedTrip.getEndDate());
         assertEquals("A wonderful tour", clonedTrip.getDescription());
         assertEquals(BigDecimal.valueOf(1500), clonedTrip.getBudget());
         assertEquals("EUR", clonedTrip.getCurrency());
@@ -199,5 +212,146 @@ class TripServiceTest {
 
         assertThrows(EntityNotFoundException.class,
                 () -> tripService.cloneTrip(originalTripId, currentUser));
+    }
+
+    @Test
+    void createTrip_Success_WithDates_GeneratesTripDays() {
+        User currentUser = new User();
+        currentUser.setUserId(UUID.randomUUID());
+
+        Trip mappedTrip = new Trip();
+        mappedTrip.setTitle("Italy Trip");
+        mappedTrip.setDestination("Rome");
+        mappedTrip.setStartDate(LocalDate.of(2026, 6, 1));
+        mappedTrip.setEndDate(LocalDate.of(2026, 6, 3));
+        mappedTrip.setDescription("Summer holiday");
+        mappedTrip.setBudget(BigDecimal.valueOf(2000));
+        mappedTrip.setCurrency("EUR");
+        mappedTrip.setIsPublic(true);
+
+        TripResponse expectedResponse = new TripResponse(
+                UUID.randomUUID(),
+                "Italy Trip",
+                "Rome",
+                LocalDate.of(2026, 6, 1),
+                LocalDate.of(2026, 6, 3),
+                "Summer holiday",
+                BigDecimal.valueOf(2000),
+                "EUR",
+                null,
+                true,
+                LocalDateTime.now()
+        );
+
+        final TripCreateRequest request = new TripCreateRequest(
+                "Italy Trip",
+                "Rome",
+                LocalDate.of(2026, 6, 1),
+                LocalDate.of(2026, 6, 3),
+                "Summer holiday",
+                BigDecimal.valueOf(2000),
+                "EUR",
+                null,
+                true
+        );
+
+        when(tripMapper.toEntity(request)).thenReturn(mappedTrip);
+        when(tripRepository.save(any(Trip.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(tripMapper.toResponse(any(Trip.class))).thenReturn(expectedResponse);
+
+        TripResponse response = tripService.createTrip(request, currentUser);
+
+        assertNotNull(response);
+        ArgumentCaptor<Trip> tripCaptor = ArgumentCaptor.forClass(Trip.class);
+        verify(tripRepository, times(1)).save(tripCaptor.capture());
+        Trip savedTrip = tripCaptor.getValue();
+
+        assertSame(currentUser, savedTrip.getOwner());
+        assertEquals("Rome", savedTrip.getDestination());
+        assertEquals(LocalDate.of(2026, 6, 1), savedTrip.getStartDate());
+        assertEquals(LocalDate.of(2026, 6, 3), savedTrip.getEndDate());
+
+        assertEquals(3, savedTrip.getTripDays().size());
+        assertEquals(1, savedTrip.getTripDays().get(0).getDayNumber());
+        assertEquals(LocalDate.of(2026, 6, 1), savedTrip.getTripDays().get(0).getDate());
+        assertSame(savedTrip, savedTrip.getTripDays().get(0).getTrip());
+
+        assertEquals(2, savedTrip.getTripDays().get(1).getDayNumber());
+        assertEquals(LocalDate.of(2026, 6, 2), savedTrip.getTripDays().get(1).getDate());
+
+        assertEquals(3, savedTrip.getTripDays().get(2).getDayNumber());
+        assertEquals(LocalDate.of(2026, 6, 3), savedTrip.getTripDays().get(2).getDate());
+    }
+
+    @Test
+    void createTrip_Success_WithoutDates_NoTripDays() {
+        User currentUser = new User();
+        currentUser.setUserId(UUID.randomUUID());
+
+        Trip mappedTrip = new Trip();
+        mappedTrip.setTitle("Berlin Weekend");
+        mappedTrip.setDestination("Berlin");
+
+        final TripCreateRequest request = new TripCreateRequest(
+                "Berlin Weekend",
+                "Berlin",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+
+        when(tripMapper.toEntity(request)).thenReturn(mappedTrip);
+        when(tripRepository.save(any(Trip.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        tripService.createTrip(request, currentUser);
+
+        ArgumentCaptor<Trip> tripCaptor = ArgumentCaptor.forClass(Trip.class);
+        verify(tripRepository, times(1)).save(tripCaptor.capture());
+        Trip savedTrip = tripCaptor.getValue();
+
+        assertEquals(0, savedTrip.getTripDays().size());
+        assertFalse(savedTrip.getIsPublic());
+    }
+
+    @Test
+    void createTrip_Success_StartDateAfterEndDate_NoTripDays() {
+        User currentUser = new User();
+        currentUser.setUserId(UUID.randomUUID());
+
+        Trip mappedTrip = new Trip();
+        mappedTrip.setTitle("Invalid Dates Trip");
+        mappedTrip.setDestination("Tokyo");
+        mappedTrip.setStartDate(LocalDate.of(2026, 6, 10));
+        mappedTrip.setEndDate(LocalDate.of(2026, 6, 1));
+
+        final TripCreateRequest request = new TripCreateRequest(
+                "Invalid Dates Trip",
+                "Tokyo",
+                LocalDate.of(2026, 6, 10),
+                LocalDate.of(2026, 6, 1),
+                null,
+                null,
+                null,
+                null,
+                false
+        );
+
+        when(tripMapper.toEntity(request)).thenReturn(mappedTrip);
+        when(tripRepository.save(any(Trip.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        tripService.createTrip(request, currentUser);
+
+        ArgumentCaptor<Trip> tripCaptor = ArgumentCaptor.forClass(Trip.class);
+        verify(tripRepository, times(1)).save(tripCaptor.capture());
+        Trip savedTrip = tripCaptor.getValue();
+
+        assertEquals(0, savedTrip.getTripDays().size());
     }
 }
