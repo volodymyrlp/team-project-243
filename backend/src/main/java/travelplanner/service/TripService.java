@@ -1,5 +1,6 @@
 package travelplanner.service;
 
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +39,18 @@ public class TripService {
         trip.setOwner(currentUser);
         if (trip.getIsPublic() == null) {
             trip.setIsPublic(false);
+        }
+
+        if (trip.getStartDate() != null && trip.getEndDate() != null
+                && !trip.getStartDate().isAfter(trip.getEndDate())) {
+            long days = ChronoUnit.DAYS.between(trip.getStartDate(), trip.getEndDate());
+            for (int i = 0; i <= days; i++) {
+                TripDay tripDay = new TripDay();
+                tripDay.setTrip(trip);
+                tripDay.setDayNumber(i + 1);
+                tripDay.setDate(trip.getStartDate().plusDays(i));
+                trip.getTripDays().add(tripDay);
+            }
         }
 
         Trip savedTrip = tripRepository.save(trip);
@@ -135,6 +148,9 @@ public class TripService {
 
         Trip clonedTrip = new Trip();
         clonedTrip.setTitle(originalTrip.getTitle() + " (Copy)");
+        clonedTrip.setDestination(originalTrip.getDestination());
+        clonedTrip.setStartDate(originalTrip.getStartDate());
+        clonedTrip.setEndDate(originalTrip.getEndDate());
         clonedTrip.setDescription(originalTrip.getDescription());
         clonedTrip.setBudget(originalTrip.getBudget());
         clonedTrip.setCurrency(originalTrip.getCurrency());
