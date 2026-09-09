@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -55,6 +56,9 @@ class TripControllerIntegrationTest {
         TripResponse response = new TripResponse(
                 tripId,
                 "My Trip",
+                "Paris",
+                LocalDate.now(),
+                LocalDate.now().plusDays(5),
                 "Description",
                 BigDecimal.valueOf(1000),
                 "USD",
@@ -138,6 +142,9 @@ class TripControllerIntegrationTest {
         TripResponse response = new TripResponse(
                 UUID.randomUUID(),
                 "My Trip (Copy)",
+                "Paris",
+                LocalDate.now(),
+                LocalDate.now().plusDays(5),
                 "Description",
                 BigDecimal.valueOf(1000),
                 "USD",
@@ -153,6 +160,52 @@ class TripControllerIntegrationTest {
                         .with(csrf()))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.title").value("My Trip (Copy)"))
+                .andExpect(jsonPath("$.destination").value("Paris"))
                 .andExpect(jsonPath("$.isPublic").value(false));
+    }
+
+    @Test
+    void createTrip_Success() throws Exception {
+        User currentUser = new User();
+        currentUser.setUserId(UUID.randomUUID());
+        currentUser.setEmail("test@example.com");
+
+        TripResponse response = new TripResponse(
+                UUID.randomUUID(),
+                "Rome Adventure",
+                "Rome",
+                LocalDate.of(2026, 10, 1),
+                LocalDate.of(2026, 10, 5),
+                "Trip to Rome",
+                BigDecimal.valueOf(1200),
+                "EUR",
+                null,
+                false,
+                LocalDateTime.now()
+        );
+
+        when(tripService.createTrip(any(), any())).thenReturn(response);
+
+        mockMvc.perform(post("/api/v1/trips")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "title": "Rome Adventure",
+                                  "destination": "Rome",
+                                  "startDate": "2026-10-01",
+                                  "endDate": "2026-10-05",
+                                  "description": "Trip to Rome",
+                                  "budget": 1200,
+                                  "currency": "EUR",
+                                  "isPublic": false
+                                }
+                                """)
+                        .with(user(currentUser))
+                        .with(csrf()))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.title").value("Rome Adventure"))
+                .andExpect(jsonPath("$.destination").value("Rome"))
+                .andExpect(jsonPath("$.startDate").value("2026-10-01"))
+                .andExpect(jsonPath("$.endDate").value("2026-10-05"));
     }
 }
