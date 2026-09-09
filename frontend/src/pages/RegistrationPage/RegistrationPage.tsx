@@ -1,21 +1,15 @@
 import { useState } from "react";
 import "./RegistrationPage.scss";
-import { registerUser } from "../api/auth";
+import { registerUser } from "../../api/auth";
 import { Link, useNavigate } from "react-router-dom";
-
-interface RegistrationForm {
-  fullName: string;
-  email: string;
-  passwordHash: string;
-  confirmPassword: string;
-}
+import type { RegistrationData } from "../../types/RegistrationData";
 
 type ModalType = "success" | "error" | null;
 
 export const RegistrationPage = () => {
   const navigate = useNavigate();
 
-  const [formData, setFormData] = useState<RegistrationForm>({
+  const [formData, setFormData] = useState<RegistrationData>({
     fullName: "",
     email: "",
     passwordHash: "",

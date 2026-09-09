@@ -1,22 +1,16 @@
 import { Link } from "react-router-dom";
-import logo from "../assets/images/logo.png";
+import logo from "../../assets/images/logo.png";
 
-import spain from "../assets/images/SpainImage.jpg";
-import italy from "../assets/images/ItalyImage.jpg";
-import germany from "../assets/images/GermanyImage.jpg";
-import austria from "../assets/images/AustriaImage.jpg";
-import france from "../assets/images/FranceImage.jpg";
+import spain from "../../assets/images/SpainImage.jpg";
+import italy from "../../assets/images/ItalyImage.jpg";
+import germany from "../../assets/images/GermanyImage.jpg";
+import austria from "../../assets/images/AustriaImage.jpg";
+import france from "../../assets/images/FranceImage.jpg";
 
 import "./MainPage.scss";
-import { Header } from "../components/Header";
+import { Header } from "../../components/Header";
+import type { Country } from "../../types/Country";
 
-interface Country {
-  name: string;
-  flag: string;
-  nights: string;
-  description: string;
-  image: string;
-}
 
 const countries: Country[] = [
   {

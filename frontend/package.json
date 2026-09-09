@@ -11,9 +11,11 @@
   },
   "dependencies": {
     "react": "^19.2.7",
+    "react-datepicker": "^9.1.0",
     "react-dom": "^19.2.7",
     "react-international-phone": "^4.8.0",
     "react-router-dom": "^7.18.2",
+    "react-select": "^5.10.2",
     "react-select-country-list": "^2.2.3"
   },
   "devDependencies": {
