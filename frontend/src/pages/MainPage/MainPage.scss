@@ -264,6 +264,120 @@
     }
   }
 
+  &__how-it-works {
+    padding: 100px 6%;
+    background: $background;
+    text-align: center;
+  }
+
+  &__how-heading {
+    width: min(700px, 90%);
+    margin: 0 auto 60px;
+
+    span {
+      display: inline-block;
+      margin-bottom: 18px;
+      color: $primary;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 2px;
+    }
+
+    h2 {
+      margin: 0 0 16px;
+      font-size: clamp(30px, 5vw, 48px);
+      line-height: 1.1;
+      letter-spacing: -1.5px;
+    }
+
+    p {
+      margin: 0;
+      color: #64748b;
+      font-size: 16px;
+      line-height: 1.6;
+    }
+  }
+
+  &__steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 30px;
+    width: min(1100px, 100%);
+    margin: 0 auto 50px;
+  }
+
+  &__step {
+    position: relative;
+    padding: 35px 30px;
+    background: $surface;
+    border: 1px solid $border;
+    border-radius: 20px;
+    text-align: left;
+    transition:
+      transform 0.25s ease,
+      box-shadow 0.25s ease;
+
+    &:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 15px 30px rgb(0 0 0 / 8%);
+    }
+  }
+
+  &__step-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    margin-bottom: 25px;
+    border-radius: 16px;
+    background: $input-background;
+    font-size: 26px;
+  }
+
+  &__step-number {
+    display: block;
+    margin-bottom: 8px;
+    color: $primary;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1px;
+  }
+
+  &__step h3 {
+    margin: 0 0 12px;
+    color: $text-primary;
+    font-size: 22px;
+  }
+
+  &__step p {
+    margin: 0;
+    color: #64748b;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  &__how-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 190px;
+    padding: 14px 28px;
+    border-radius: 10px;
+    background: $primary;
+    color: white;
+    font-size: 15px;
+    font-weight: 600;
+    text-decoration: none;
+    transition:
+      background 0.2s ease,
+      transform 0.2s ease;
+
+    &:hover {
+      background: $primary-dark;
+      transform: translateY(-2px);
+    }
+  }
 
   &__reviews {
     padding: 100px 6%;
@@ -325,7 +439,6 @@
       font-size: 12px;
     }
   }
-
 
   &__final-cta {
     padding: 120px 6%;
@@ -396,6 +509,12 @@
     font-size: 12px;
   }
 
+  @media (width < 800px) {
+    &__steps {
+      grid-template-columns: 1fr;
+      width: min(500px, 100%);
+    }
+  }
 
   @media (width < 700px) {
     &__hero {
@@ -476,6 +595,19 @@
     &__countries,
     &__reviews {
       padding: 70px 20px;
+    }
+
+    &__how-it-works {
+      padding: 70px 20px;
+    }
+
+    &__how-heading {
+      width: 100%;
+      margin-bottom: 40px;
+    }
+
+    &__step {
+      padding: 30px 25px;
     }
 
     &__final-cta {
