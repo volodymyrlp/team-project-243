@@ -1,0 +1,8 @@
+# Migrations and workflows must stay LF. A Windows editor flipped the Liquibase
+# changelog to CRLF once, and a three-line change showed up as the whole file.
+*.yaml text eol=lf
+*.yml  text eol=lf
+*.sql  text eol=lf
+
+# Maven ships this batch file with CRLF, so leave it alone.
+*.cmd  text eol=crlf

@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import "./ProfilePage.scss";
-import { Header } from "../components/Header";
-import type { UserProfile } from "../types/UserProfile";
-import type { UserUpdateRequest } from "../types/UserUpdateRequest";
+import { Header } from "../../components/Header";
+import type { UserProfile } from "../../types/UserProfile";
+import type { UserUpdateRequest } from "../../types/UserUpdateRequest";
 
 export const ProfilePage = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);

@@ -1,22 +1,16 @@
 import { Link } from "react-router-dom";
-import logo from "../assets/images/logo.png";
+import logo from "../../assets/images/logo.png";
 
-import spain from "../assets/images/SpainImage.jpg";
-import italy from "../assets/images/ItalyImage.jpg";
-import germany from "../assets/images/GermanyImage.jpg";
-import austria from "../assets/images/AustriaImage.jpg";
-import france from "../assets/images/FranceImage.jpg";
+import spain from "../../assets/images/SpainImage.jpg";
+import italy from "../../assets/images/ItalyImage.jpg";
+import germany from "../../assets/images/GermanyImage.jpg";
+import austria from "../../assets/images/AustriaImage.jpg";
+import france from "../../assets/images/FranceImage.jpg";
 
 import "./MainPage.scss";
-import { Header } from "../components/Header";
-
-interface Country {
-  name: string;
-  flag: string;
-  nights: string;
-  description: string;
-  image: string;
-}
+import { Header } from "../../components/Header";
+import type { Country } from "../../types/Country";
+import { WorldMap } from "../../components/WorldMap/WorldMap";
 
 const countries: Country[] = [
   {
@@ -139,6 +133,69 @@ export const MainPage = () => {
           ))}
         </div>
       </section>
+
+      <WorldMap />
+
+<section className="main-before-auth__how-it-works">
+  <div className="main-before-auth__how-heading">
+    <span>HOW IT WORKS</span>
+
+    <h2>Start planning your next adventure</h2>
+
+    <p>
+      MriyaTrip helps you organize your travels, keep your trips in one
+      place, and explore the world.
+    </p>
+  </div>
+
+  <div className="main-before-auth__steps">
+    <article className="main-before-auth__step">
+      <div className="main-before-auth__step-icon">👤</div>
+
+      <span className="main-before-auth__step-number">01</span>
+
+      <h3>Create an account</h3>
+
+      <p>
+        Sign up and create your personal profile to start planning your
+        adventures.
+      </p>
+    </article>
+
+    <article className="main-before-auth__step">
+      <div className="main-before-auth__step-icon">📍</div>
+
+      <span className="main-before-auth__step-number">02</span>
+
+      <h3>Create your trip</h3>
+
+      <p>
+        Choose your destination, dates, and add all the important details
+        about your trip.
+      </p>
+    </article>
+
+    <article className="main-before-auth__step">
+      <div className="main-before-auth__step-icon">🌍</div>
+
+      <span className="main-before-auth__step-number">03</span>
+
+      <h3>Plan & explore</h3>
+
+      <p>
+        Keep your trips organized and see your destinations on your personal
+        travel map.
+      </p>
+    </article>
+  </div>
+
+  <Link
+    to="/registration"
+    className="main-before-auth__how-button"
+  >
+    Create an account
+  </Link>
+</section>
 
       <section className='main-before-auth__reviews'>
         <div className='main-before-auth__section-heading'>

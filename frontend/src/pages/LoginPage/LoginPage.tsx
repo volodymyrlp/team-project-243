@@ -1,17 +1,13 @@
 import { useState } from "react";
 import "./LoginPage.scss";
 import { Link, useNavigate } from "react-router-dom";
-import { loginUser } from "../api/auth";
-
-interface LoginForm {
-  email: string;
-  password: string;
-}
+import { loginUser } from "../../api/auth";
+import type { LoginData } from "../../types/LoginData";
 
 export const LoginPage = () => {
   const navigate = useNavigate();
 
-  const [formData, setFormData] = useState<LoginForm>({
+  const [formData, setFormData] = useState<LoginData>({
     email: "",
     password: "",
   });
