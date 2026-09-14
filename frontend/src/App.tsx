@@ -27,11 +27,6 @@ function App() {
           element={<RegistrationPage />}
         />
 
-        <Route
-          path='/create-trip'
-          element={<CreateTripPage />} // ЗАБРАТИ!!!!
-        />
-
         {/* Protected routes */}
 
         <Route element={<ProtectedRoute />}>
