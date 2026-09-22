@@ -40,15 +40,21 @@ jobs:
             fi
 
             # The real measurement. A single cold request routinely dies before
-            # the instance finishes waking, so the retries are not optional —
-            # without them this reports a false outage every time.
+            # the instance finishes waking, so the retry is not optional. A wake
+            # took 420 s on 21 Sep, which is why the limit is 500 and not 240.
             start=$(date +%s)
-            if curl -sS -o body.txt --max-time 240 --retry 3 --retry-delay 20 \
-                 --retry-all-errors "$url" 2>/dev/null \
-               && grep -q "$expect" body.txt; then
+            code=$(curl -sS -o body.txt -D headers.txt -w '%{http_code}' \
+                     --max-time 500 --retry 1 --retry-delay 20 \
+                     --retry-all-errors "$url" 2>/dev/null) || code=000
+            if [ "$code" = "200" ] && grep -q "$expect" body.txt; then
               up=1
             else
               up=0
+              # Render explains itself in a header, so keep it. No status code at
+              # all means the instance was still waking. A real code together with
+              # hibernate-wake-error or no-deploy means it tried and could not.
+              routing=$(grep -i '^x-render-routing:' headers.txt | tr -d '\r')
+              echo "$name is not answering: HTTP $code ${routing:-no routing header}"
             fi
             seconds=$(( $(date +%s) - start ))
 
@@ -98,11 +104,23 @@ jobs:
             -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
             "https://gvuchidiqyxjrpzjsnjb.supabase.co/rest/v1/keepalive?select=id&limit=1")
           echo "Supabase answered $code"
-          if [ "$code" != "200" ]; then
-            echo "The keep-alive query failed, so the pause timer was probably not reset."
-            echo "Check that the keepalive table and its anon select policy still exist."
-            exit 1
-          fi
+          case "$code" in
+            200)
+              ;;
+            4*)
+              # A 4xx is our own fault — the table or its anon policy is gone.
+              # That never fixes itself, so make the run red.
+              echo "Supabase rejected the query. Check the keepalive table and its anon select policy."
+              exit 1
+              ;;
+            *)
+              # A 5xx or a timeout is their gateway having a bad minute. The pause
+              # timer runs for seven days, so one missed ping changes nothing and
+              # is not worth a red run. Worry only if this repeats for days.
+              echo "Supabase did not answer, but the pause timer runs for seven days."
+              echo "One missed ping is harmless."
+              ;;
+          esac
 
       - name: Fail loudly when production is down
         if: steps.probe.outputs.prod_up != '1'
