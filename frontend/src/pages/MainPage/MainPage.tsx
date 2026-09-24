@@ -56,6 +56,9 @@ const countries: Country[] = [
 ];
 
 export const MainPage = () => {
+  const token = localStorage.getItem("token");
+  const isAuthenticated = Boolean(token);
+
   return (
     <main className='main-before-auth'>
       <section className='main-before-auth__hero'>
@@ -81,10 +84,10 @@ export const MainPage = () => {
           </p>
 
           <Link
-            to='/registration'
+            to={isAuthenticated ? "/trips/create" : "/registration"}
             className='main-before-auth__cta-button'
           >
-            Start planning
+            {isAuthenticated ? "Create your trip" : "Start planning"}
           </Link>
         </div>
       </section>
@@ -136,66 +139,66 @@ export const MainPage = () => {
 
       <WorldMap />
 
-<section className="main-before-auth__how-it-works">
-  <div className="main-before-auth__how-heading">
-    <span>HOW IT WORKS</span>
+      <section className='main-before-auth__how-it-works'>
+        <div className='main-before-auth__how-heading'>
+          <span>HOW IT WORKS</span>
 
-    <h2>Start planning your next adventure</h2>
+          <h2>Start planning your next adventure</h2>
 
-    <p>
-      MriyaTrip helps you organize your travels, keep your trips in one
-      place, and explore the world.
-    </p>
-  </div>
+          <p>
+            MriyaTrip helps you organize your travels, keep your trips in one
+            place, and explore the world.
+          </p>
+        </div>
 
-  <div className="main-before-auth__steps">
-    <article className="main-before-auth__step">
-      <div className="main-before-auth__step-icon">👤</div>
+        <div className='main-before-auth__steps'>
+          <article className='main-before-auth__step'>
+            <div className='main-before-auth__step-icon'>👤</div>
 
-      <span className="main-before-auth__step-number">01</span>
+            <span className='main-before-auth__step-number'>01</span>
 
-      <h3>Create an account</h3>
+            <h3>Create an account</h3>
 
-      <p>
-        Sign up and create your personal profile to start planning your
-        adventures.
-      </p>
-    </article>
+            <p>
+              Sign up and create your personal profile to start planning your
+              adventures.
+            </p>
+          </article>
 
-    <article className="main-before-auth__step">
-      <div className="main-before-auth__step-icon">📍</div>
+          <article className='main-before-auth__step'>
+            <div className='main-before-auth__step-icon'>📍</div>
 
-      <span className="main-before-auth__step-number">02</span>
+            <span className='main-before-auth__step-number'>02</span>
 
-      <h3>Create your trip</h3>
+            <h3>Create your trip</h3>
 
-      <p>
-        Choose your destination, dates, and add all the important details
-        about your trip.
-      </p>
-    </article>
+            <p>
+              Choose your destination, dates, and add all the important details
+              about your trip.
+            </p>
+          </article>
 
-    <article className="main-before-auth__step">
-      <div className="main-before-auth__step-icon">🌍</div>
+          <article className='main-before-auth__step'>
+            <div className='main-before-auth__step-icon'>🌍</div>
 
-      <span className="main-before-auth__step-number">03</span>
+            <span className='main-before-auth__step-number'>03</span>
 
-      <h3>Plan & explore</h3>
+            <h3>Plan & explore</h3>
 
-      <p>
-        Keep your trips organized and see your destinations on your personal
-        travel map.
-      </p>
-    </article>
-  </div>
+            <p>
+              Keep your trips organized and see your destinations on your
+              personal travel map.
+            </p>
+          </article>
+        </div>
 
-  <Link
-    to="/registration"
-    className="main-before-auth__how-button"
-  >
-    Create an account
-  </Link>
-</section>
+        <Link
+          to={isAuthenticated ? "/trips/create" : "/registration"}
+          className='main-before-auth__how-button'
+        >
+          {isAuthenticated ? "Create your trip" : "Create an account"}
+        </Link>
+      </section>
 
       <section className='main-before-auth__reviews'>
         <div className='main-before-auth__section-heading'>
@@ -261,12 +264,12 @@ export const MainPage = () => {
           <h2>Time to turn dreams into reality</h2>
 
           <p>
-            Create your first itinerary in a few minutes and head out toward new
-            emotions.
+            Create your first itinerary in a few minutes and head out toward
+            new emotions.
           </p>
 
           <Link
-            to='/registration'
+            to={isAuthenticated ? "/trips/create" : "/registration"}
             className='main-before-auth__cta-button main-before-auth__cta-button--light'
           >
             Create your first trip
