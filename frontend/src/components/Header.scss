@@ -47,6 +47,15 @@
         color: $primary;
       }
     }
+    
+    .header__create-trip {
+      color: $primary;
+      font-weight: 600;
+
+      &:hover {
+        color: $primary-dark;
+      }
+    }
   }
 
   &__nav-button {

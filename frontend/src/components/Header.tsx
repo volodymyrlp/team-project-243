@@ -32,6 +32,13 @@ export const Header = () => {
         {isAuthenticated ? (
           <>
             <Link
+              to='/trips/create'
+              className='header__create-trip'
+            >
+              Create trip
+            </Link>
+
+            <Link
               to='/profile'
               className='header__profile'
             >
