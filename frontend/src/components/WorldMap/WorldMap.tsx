@@ -1,8 +1,30 @@
+import L from "leaflet";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 
 import "leaflet/dist/leaflet.css";
 
 import "./WorldMap.scss";
+
+const markerIcon = L.icon({
+  iconUrl: new URL(
+    "leaflet/dist/images/marker-icon.png",
+    import.meta.url
+  ).href,
+  iconRetinaUrl: new URL(
+    "leaflet/dist/images/marker-icon-2x.png",
+    import.meta.url
+  ).href,
+  shadowUrl: new URL(
+    "leaflet/dist/images/marker-shadow.png",
+    import.meta.url
+  ).href,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
+
+L.Marker.prototype.options.icon = markerIcon;
 
 export const WorldMap = () => {
   return (
