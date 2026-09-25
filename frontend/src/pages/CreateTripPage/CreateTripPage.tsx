@@ -1,6 +1,6 @@
 import { useState, type ChangeEvent, type FormEvent } from "react";
 import { Header } from "../../components/Header";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import DatePicker from "react-datepicker";
 
 import { CitySelect } from "../../components/CitySelect";
@@ -9,6 +9,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import "./CreateTripPage.scss";
 import type { TripForm } from "../../types/TripForm";
 import type { CityOption } from "../../types/CityOption";
+import type { TripResponse } from "../../types/TripResponse";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -21,6 +22,8 @@ const formatDate = (date: Date) => {
 };
 
 export const CreateTripPage = () => {
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState<TripForm>({
     name: "",
     destination: null,
@@ -33,7 +36,6 @@ export const CreateTripPage = () => {
   });
 
   const [error, setError] = useState("");
-  const [isCreated, setIsCreated] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (
@@ -47,7 +49,6 @@ export const CreateTripPage = () => {
     }));
 
     setError("");
-    setIsCreated(false);
   };
 
   const handleDestinationChange = (destination: CityOption | null) => {
@@ -57,7 +58,6 @@ export const CreateTripPage = () => {
     }));
 
     setError("");
-    setIsCreated(false);
   };
 
   const handleStartDateChange = (date: Date | null) => {
@@ -69,7 +69,6 @@ export const CreateTripPage = () => {
     }));
 
     setError("");
-    setIsCreated(false);
   };
 
   const handleEndDateChange = (date: Date | null) => {
@@ -79,7 +78,6 @@ export const CreateTripPage = () => {
     }));
 
     setError("");
-    setIsCreated(false);
   };
 
   const handlePublicChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -89,14 +87,12 @@ export const CreateTripPage = () => {
     }));
 
     setError("");
-    setIsCreated(false);
   };
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
 
     setError("");
-    setIsCreated(false);
 
     if (!formData.destination) {
       setError("Please select a destination.");
@@ -175,7 +171,9 @@ export const CreateTripPage = () => {
         throw new Error(errorText || "Failed to create trip");
       }
 
-      setIsCreated(true);
+      const createdTrip: TripResponse = await response.json();
+
+      navigate(`/trips/${createdTrip.tripId}/itinerary`);
     } catch (error) {
       console.error("Failed to create trip:", error);
       setError("Failed to create trip. Please try again.");
@@ -334,22 +332,6 @@ export const CreateTripPage = () => {
               {isLoading ? "Creating..." : "Create trip"}
             </button>
           </form>
-
-          {isCreated && (
-            <div className='create-trip__success'>
-              <div className='create-trip__success-icon'>✓</div>
-
-              <div>
-                <h2>Trip created!</h2>
-
-                <p>
-                  Your trip to{" "}
-                  <strong>{formData.destination?.city.name}</strong> has been
-                  created successfully.
-                </p>
-              </div>
-            </div>
-          )}
         </section>
       </main>
     </>
