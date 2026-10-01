@@ -29,3 +29,10 @@ spring:
     multipart:
       max-file-size: 5MB
       max-request-size: 5MB
+  cache:
+    type: caffeine
+    caffeine:
+      spec: expireAfterWrite=12h
+exchange:
+  api:
+    url: ${EXCHANGE_API_URL:https://api.exchangerate-api.com/v4/latest/}

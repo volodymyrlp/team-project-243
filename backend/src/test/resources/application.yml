@@ -15,6 +15,10 @@ spring:
         dialect: org.hibernate.dialect.H2Dialect
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.yaml
+  cache:
+    type: caffeine
+    caffeine:
+      spec: expireAfterWrite=1m
 supabase:
   s3:
     endpoint: ${SUPABASE_S3_ENDPOINT:https://example.invalid/storage/v1/s3}
@@ -22,3 +26,6 @@ supabase:
     access-key-id: ${SUPABASE_S3_ACCESS_KEY_ID:dummy}
     secret-access-key: ${SUPABASE_S3_SECRET_ACCESS_KEY:dummy}
     bucket: ${SUPABASE_STORAGE_BUCKET:user-images-staging}
+exchange:
+  api:
+    url: https://api.exchangerate-api.com/v4/latest/
