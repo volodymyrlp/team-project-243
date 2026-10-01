@@ -66,6 +66,12 @@ public class CustomGlobalExceptionHandler extends ResponseEntityExceptionHandler
         return new ResponseEntity<>(ex.getMessage(), HttpStatus.FORBIDDEN);
     }
 
+    @ExceptionHandler(CurrencyExchangeException.class)
+    public ResponseEntity<Object> handleCurrencyExchangeException(CurrencyExchangeException ex) {
+        return new ResponseEntity<>("Currency exchange exception occurred. " + ex.getMessage(),
+                HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
     @Override
     protected ResponseEntity<Object> handleMaxUploadSizeExceededException(
             org.springframework.web.multipart.MaxUploadSizeExceededException ex,
