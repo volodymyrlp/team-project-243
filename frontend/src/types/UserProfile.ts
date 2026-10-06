@@ -4,5 +4,4 @@ export interface UserProfile {
   fullName: string;
   createdAt: string;
   avatarUrl: string | null;
-  trips: unknown[];
 }

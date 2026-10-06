@@ -9,6 +9,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 
 import "./App.scss";
 import { CreateTripPage } from "./pages/CreateTripPage/CreateTripPage";
+import { ItineraryBuilderPage } from "./pages/ItineraryBuilderPage/ItineraryBuilderPage";
 
 function App() {
   return (
@@ -37,6 +38,10 @@ function App() {
           <Route
             path='/trips/create'
             element={<CreateTripPage />}
+          />
+          <Route
+            path='/trips/:tripId/itinerary'
+            element={<ItineraryBuilderPage />}
           />
         </Route>
         <Route
