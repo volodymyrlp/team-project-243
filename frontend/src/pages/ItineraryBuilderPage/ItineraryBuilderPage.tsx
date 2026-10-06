@@ -102,6 +102,17 @@ export const ItineraryBuilderPage = () => {
           ← Back to profile
         </Link>
 
+        <div className='itinerary-builder__cover'>
+          {trip.coverUrl ? (
+            <img
+              src={`${API_URL}${trip.coverUrl}`}
+              alt={`${trip.title} cover`}
+            />
+          ) : (
+            <div className='itinerary-builder__cover-placeholder'>✈</div>
+          )}
+        </div>
+
         <div className='itinerary-builder__header'>
           <span className='itinerary-builder__eyebrow'>YOUR TRIP</span>
 
