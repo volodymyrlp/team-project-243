@@ -143,7 +143,6 @@
       position: absolute;
       bottom: -8px;
       left: 50%;
-      transform: translateX(-50%);
       width: max-content;
       padding: 5px 9px;
       border: none;
@@ -154,6 +153,7 @@
       font-weight: 600;
       cursor: pointer;
       box-shadow: 0 4px 12px rgb(0 0 0 / 12%);
+      transform: translateX(-50%);
       transition:
         background 0.2s ease,
         color 0.2s ease;
@@ -445,10 +445,7 @@
   }
 
   .trip-card {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    padding: 22px;
+    overflow: hidden;
     border-radius: 20px;
     background: $surface;
     box-shadow: 0 12px 30px rgb(0 0 0 / 6%);
@@ -459,6 +456,44 @@
     &:hover {
       transform: translateY(-3px);
       box-shadow: 0 18px 35px rgb(0 0 0 / 9%);
+    }
+
+    &__cover {
+      position: relative;
+      width: 100%;
+      height: 180px;
+      overflow: hidden;
+      background: $input-background;
+
+      img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.3s ease;
+      }
+    }
+
+    &:hover &__cover img {
+      transform: scale(1.03);
+    }
+
+    &__cover-placeholder {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      background: rgb(2 132 199 / 8%);
+      color: $primary;
+      font-size: 34px;
+    }
+
+    &__body {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 20px 22px 22px;
     }
 
     &__icon {
@@ -528,6 +563,13 @@
       }
     }
 
+    &__actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
     &__button {
       display: inline-flex;
       align-items: center;
@@ -548,6 +590,36 @@
       &:hover {
         background: $primary;
         color: white;
+      }
+    }
+
+    &__delete {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 38px;
+      padding: 0 13px;
+      border: 1px solid rgb(239 68 68 / 20%);
+      border-radius: 9px;
+      background: transparent;
+      color: #dc2626;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition:
+        background 0.2s ease,
+        color 0.2s ease,
+        opacity 0.2s ease;
+
+      &:hover {
+        background: #dc2626;
+        color: white;
+      }
+
+      &:disabled {
+        opacity: 0.6;
+        cursor: default;
       }
     }
   }
@@ -658,13 +730,27 @@
     }
 
     .trip-card {
+      &__cover {
+        height: 200px;
+      }
+
+      &__body {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
       &__content {
         align-items: flex-start;
         flex-direction: column;
       }
 
-      &__button {
+      &__actions {
         width: 100%;
+      }
+
+      &__button,
+      &__delete {
+        flex: 1;
       }
     }
 
@@ -737,7 +823,13 @@
     }
 
     .trip-card {
-      padding: 18px;
+      &__cover {
+        height: 170px;
+      }
+
+      &__body {
+        padding: 18px;
+      }
     }
 
     &__travel-card {

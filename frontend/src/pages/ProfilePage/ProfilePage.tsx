@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import "./ProfilePage.scss";
 import { Header } from "../../components/Header";
 import type { UserProfile } from "../../types/UserProfile";
@@ -7,11 +7,14 @@ import type { UserUpdateRequest } from "../../types/UserUpdateRequest";
 import type { TripResponse } from "../../types/TripResponse";
 
 export const ProfilePage = () => {
+  const navigate = useNavigate();
+
   const [profile, setProfile] = useState<UserProfile | null>(null);
 
   const [trips, setTrips] = useState<TripResponse[]>([]);
   const [isTripsLoading, setIsTripsLoading] = useState(true);
   const [tripsError, setTripsError] = useState("");
+  const [deletingTripId, setDeletingTripId] = useState<string | null>(null);
 
   const [editData, setEditData] = useState<UserUpdateRequest>({
     fullName: "",
@@ -50,7 +53,7 @@ export const ProfilePage = () => {
 
         if (response.status === 401 || response.status === 403) {
           localStorage.removeItem("token");
-          window.location.href = "/login";
+          navigate("/login");
 
           return null;
         }
@@ -139,7 +142,7 @@ export const ProfilePage = () => {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [navigate]);
 
   useEffect(() => {
     let isMounted = true;
@@ -167,7 +170,7 @@ export const ProfilePage = () => {
 
         if (response.status === 401 || response.status === 403) {
           localStorage.removeItem("token");
-          window.location.href = "/login";
+          navigate("/login");
 
           return;
         }
@@ -202,7 +205,58 @@ export const ProfilePage = () => {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [navigate]);
+
+  const handleDeleteTrip = async (tripId: string, tripTitle: string) => {
+    const shouldDelete = window.confirm(
+      `Are you sure you want to delete "${tripTitle}"?`,
+    );
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      return;
+    }
+
+    setDeletingTripId(tripId);
+    setTripsError("");
+
+    try {
+      const API_URL = import.meta.env.VITE_API_URL;
+
+      const response = await fetch(`${API_URL}/api/v1/trips/${tripId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem("token");
+        navigate("/login");
+
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(`Failed to delete trip. Status: ${response.status}`);
+      }
+
+      setTrips((prevTrips) =>
+        prevTrips.filter((trip) => trip.tripId !== tripId),
+      );
+    } catch (e) {
+      console.error("Trip deletion failed", e);
+
+      setTripsError("We couldn't delete this trip. Please try again later.");
+    } finally {
+      setDeletingTripId(null);
+    }
+  };
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setEditData((prev) => ({
@@ -268,7 +322,7 @@ export const ProfilePage = () => {
 
       if (response.status === 401 || response.status === 403) {
         localStorage.removeItem("token");
-        window.location.href = "/login";
+        navigate("/login");
 
         return;
       }
@@ -513,33 +567,59 @@ export const ProfilePage = () => {
                   className='trip-card'
                   key={trip.tripId}
                 >
-                  <div className='trip-card__icon'>✈</div>
+                  <div className='trip-card__cover'>
+                    {trip.coverUrl ? (
+                      <img
+                        src={trip.coverUrl}
+                        alt={`${trip.title} cover`}
+                      />
+                    ) : (
+                      <div className='trip-card__cover-placeholder'>✈</div>
+                    )}
+                  </div>
 
-                  <div className='trip-card__content'>
-                    <div className='trip-card__details'>
-                      <h3>{trip.title}</h3>
+                  <div className='trip-card__body'>
+                    <div className='trip-card__content'>
+                      <div className='trip-card__details'>
+                        <h3>{trip.title}</h3>
 
-                      <p className='trip-card__destination'>
-                        {trip.destination}
-                      </p>
+                        <p className='trip-card__destination'>
+                          {trip.destination}
+                        </p>
 
-                      <span
-                        className={`trip-card__status ${
-                          trip.isPublic
-                            ? "trip-card__status--public"
-                            : "trip-card__status--private"
-                        }`}
-                      >
-                        {trip.isPublic ? "Public" : "Private"}
-                      </span>
+                        <span
+                          className={`trip-card__status ${
+                            trip.isPublic
+                              ? "trip-card__status--public"
+                              : "trip-card__status--private"
+                          }`}
+                        >
+                          {trip.isPublic ? "Public" : "Private"}
+                        </span>
+                      </div>
+
+                      <div className='trip-card__actions'>
+                        <Link
+                          to={`/trips/${trip.tripId}/itinerary`}
+                          className='trip-card__button'
+                        >
+                          View trip
+                        </Link>
+
+                        <button
+                          type='button'
+                          className='trip-card__delete'
+                          onClick={() =>
+                            handleDeleteTrip(trip.tripId, trip.title)
+                          }
+                          disabled={deletingTripId === trip.tripId}
+                        >
+                          {deletingTripId === trip.tripId
+                            ? "Deleting..."
+                            : "Delete"}
+                        </button>
+                      </div>
                     </div>
-
-                    <Link
-                      to={`/trips/${trip.tripId}/itinerary`}
-                      className='trip-card__button'
-                    >
-                      View trip
-                    </Link>
                   </div>
                 </div>
               ))}
