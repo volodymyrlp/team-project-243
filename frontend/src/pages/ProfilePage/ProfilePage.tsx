@@ -1,12 +1,20 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import "./ProfilePage.scss";
 import { Header } from "../../components/Header";
 import type { UserProfile } from "../../types/UserProfile";
 import type { UserUpdateRequest } from "../../types/UserUpdateRequest";
+import type { TripResponse } from "../../types/TripResponse";
 
 export const ProfilePage = () => {
+  const navigate = useNavigate();
+
   const [profile, setProfile] = useState<UserProfile | null>(null);
+
+  const [trips, setTrips] = useState<TripResponse[]>([]);
+  const [isTripsLoading, setIsTripsLoading] = useState(true);
+  const [tripsError, setTripsError] = useState("");
+  const [deletingTripId, setDeletingTripId] = useState<string | null>(null);
 
   const [editData, setEditData] = useState<UserUpdateRequest>({
     fullName: "",
@@ -17,18 +25,25 @@ export const ProfilePage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
+  const [isServerWaking, setIsServerWaking] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
+
     const fetchProfile = async () => {
       const token = localStorage.getItem("token");
 
       if (!token) {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+
         return;
       }
 
-      try {
-        const API_URL = import.meta.env.VITE_API_URL;
+      const API_URL = import.meta.env.VITE_API_URL;
 
+      const fetchProfileAttempt = async () => {
         const response = await fetch(`${API_URL}/api/v1/users/me`, {
           method: "GET",
           headers: {
@@ -38,32 +53,210 @@ export const ProfilePage = () => {
 
         if (response.status === 401 || response.status === 403) {
           localStorage.removeItem("token");
-          window.location.href = "/login";
+          navigate("/login");
+
+          return null;
+        }
+
+        if (!response.ok) {
+          throw new Error(
+            `Failed to fetch profile. Status: ${response.status}`,
+          );
+        }
+
+        const data: UserProfile = await response.json();
+
+        return data;
+      };
+
+      try {
+        const wakingTimer = setTimeout(() => {
+          if (isMounted) {
+            setIsServerWaking(true);
+          }
+        }, 5000);
+
+        try {
+          const data = await fetchProfileAttempt();
+
+          clearTimeout(wakingTimer);
+
+          if (!isMounted || !data) {
+            return;
+          }
+
+          setProfile(data);
+
+          setEditData({
+            fullName: data.fullName,
+            avatarUrl: data.avatarUrl,
+          });
+
+          return;
+        } catch (firstError) {
+          clearTimeout(wakingTimer);
+
+          console.error("Profile load failed", firstError);
+
+          if (isMounted) {
+            setIsServerWaking(true);
+          }
+
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+
+          try {
+            const data = await fetchProfileAttempt();
+
+            if (!isMounted || !data) {
+              return;
+            }
+
+            setProfile(data);
+
+            setEditData({
+              fullName: data.fullName,
+              avatarUrl: data.avatarUrl,
+            });
+
+            setError("");
+          } catch (secondError) {
+            console.error("Profile load retry failed", secondError);
+
+            if (isMounted) {
+              setError(
+                "We couldn't load your profile. Please try again later.",
+              );
+            }
+          }
+        }
+      } finally {
+        if (isMounted) {
+          setIsServerWaking(false);
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchProfile();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [navigate]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchTrips = async () => {
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        if (isMounted) {
+          setIsTripsLoading(false);
+        }
+
+        return;
+      }
+
+      try {
+        const API_URL = import.meta.env.VITE_API_URL;
+
+        const response = await fetch(`${API_URL}/api/v1/trips`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (response.status === 401 || response.status === 403) {
+          localStorage.removeItem("token");
+          navigate("/login");
 
           return;
         }
 
         if (!response.ok) {
-          throw new Error("Failed to fetch profile");
+          throw new Error(`Failed to fetch trips. Status: ${response.status}`);
         }
 
-        const data: UserProfile = await response.json();
+        const data: { content: TripResponse[] } = await response.json();
 
-        setProfile(data);
+        if (!isMounted) {
+          return;
+        }
 
-        setEditData({
-          fullName: data.fullName,
-          avatarUrl: data.avatarUrl,
-        });
-      } catch {
-        setError("We couldn't load your profile. Please try again later.");
+        setTrips(data.content);
+        setTripsError("");
+      } catch (e) {
+        console.error("Trips load failed", e);
+
+        if (isMounted) {
+          setTripsError("We couldn't load your trips. Please try again later.");
+        }
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsTripsLoading(false);
+        }
       }
     };
 
-    fetchProfile();
-  }, []);
+    fetchTrips();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [navigate]);
+
+  const handleDeleteTrip = async (tripId: string, tripTitle: string) => {
+    const shouldDelete = window.confirm(
+      `Are you sure you want to delete "${tripTitle}"?`,
+    );
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      return;
+    }
+
+    setDeletingTripId(tripId);
+    setTripsError("");
+
+    try {
+      const API_URL = import.meta.env.VITE_API_URL;
+
+      const response = await fetch(`${API_URL}/api/v1/trips/${tripId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem("token");
+        navigate("/login");
+
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(`Failed to delete trip. Status: ${response.status}`);
+      }
+
+      setTrips((prevTrips) =>
+        prevTrips.filter((trip) => trip.tripId !== tripId),
+      );
+    } catch (e) {
+      console.error("Trip deletion failed", e);
+
+      setTripsError("We couldn't delete this trip. Please try again later.");
+    } finally {
+      setDeletingTripId(null);
+    }
+  };
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setEditData((prev) => ({
@@ -129,13 +322,13 @@ export const ProfilePage = () => {
 
       if (response.status === 401 || response.status === 403) {
         localStorage.removeItem("token");
-        window.location.href = "/login";
+        navigate("/login");
 
         return;
       }
 
       if (!response.ok) {
-        throw new Error("Failed to update profile");
+        throw new Error(`Failed to update profile. Status: ${response.status}`);
       }
 
       const updatedProfile: UserProfile = await response.json();
@@ -148,7 +341,8 @@ export const ProfilePage = () => {
       });
 
       setIsEditing(false);
-    } catch {
+    } catch (e) {
+      console.error("Profile update failed", e);
       setError("We couldn't update your profile. Please try again.");
     } finally {
       setIsSaving(false);
@@ -164,7 +358,11 @@ export const ProfilePage = () => {
           <div className='profile-page__loading'>
             <div className='profile-page__loading-spinner' />
 
-            <p>Loading your profile...</p>
+            <p>
+              {isServerWaking
+                ? "Server is waking up. This may take a little longer..."
+                : "Loading your profile..."}
+            </p>
           </div>
         </section>
       </main>
@@ -336,7 +534,15 @@ export const ProfilePage = () => {
             </Link>
           </div>
 
-          {profile.trips.length === 0 ? (
+          {isTripsLoading ? (
+            <div className='profile-trips__loading'>
+              <p>Loading your trips...</p>
+            </div>
+          ) : tripsError ? (
+            <div className='profile-trips__error'>
+              <p>{tripsError}</p>
+            </div>
+          ) : trips.length === 0 ? (
             <div className='profile-trips__empty'>
               <div className='profile-trips__empty-icon'>✈</div>
 
@@ -356,22 +562,64 @@ export const ProfilePage = () => {
             </div>
           ) : (
             <div className='profile-trips__grid'>
-              {profile.trips.map((_, index) => (
+              {trips.map((trip) => (
                 <div
                   className='trip-card'
-                  key={index}
+                  key={trip.tripId}
                 >
-                  <div className='trip-card__icon'>✈</div>
+                  <div className='trip-card__cover'>
+                    {trip.coverUrl ? (
+                      <img
+                        src={trip.coverUrl}
+                        alt={`${trip.title} cover`}
+                      />
+                    ) : (
+                      <div className='trip-card__cover-placeholder'>✈</div>
+                    )}
+                  </div>
 
-                  <div className='trip-card__content'>
-                    <h3>Trip {index + 1}</h3>
+                  <div className='trip-card__body'>
+                    <div className='trip-card__content'>
+                      <div className='trip-card__details'>
+                        <h3>{trip.title}</h3>
 
-                    <Link
-                      to='/trips'
-                      className='trip-card__button'
-                    >
-                      View trip
-                    </Link>
+                        <p className='trip-card__destination'>
+                          {trip.destination}
+                        </p>
+
+                        <span
+                          className={`trip-card__status ${
+                            trip.isPublic
+                              ? "trip-card__status--public"
+                              : "trip-card__status--private"
+                          }`}
+                        >
+                          {trip.isPublic ? "Public" : "Private"}
+                        </span>
+                      </div>
+
+                      <div className='trip-card__actions'>
+                        <Link
+                          to={`/trips/${trip.tripId}/itinerary`}
+                          className='trip-card__button'
+                        >
+                          View trip
+                        </Link>
+
+                        <button
+                          type='button'
+                          className='trip-card__delete'
+                          onClick={() =>
+                            handleDeleteTrip(trip.tripId, trip.title)
+                          }
+                          disabled={deletingTripId === trip.tripId}
+                        >
+                          {deletingTripId === trip.tripId
+                            ? "Deleting..."
+                            : "Delete"}
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}
