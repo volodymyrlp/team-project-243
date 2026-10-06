@@ -115,6 +115,80 @@
     }
   }
 
+  &__cover-upload {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 180px;
+    padding: 25px;
+    border: 1.5px dashed #cbd5e1;
+    border-radius: 16px;
+    background: $input-background;
+    text-align: center;
+    cursor: pointer;
+    transition:
+      border-color 0.2s ease,
+      background 0.2s ease;
+
+    &:hover {
+      border-color: $primary;
+      background: #eff6ff;
+    }
+
+    input {
+      display: none;
+    }
+  }
+
+  &__cover-icon {
+    margin-bottom: 10px;
+    font-size: 32px;
+  }
+
+  &__cover-title {
+    margin-bottom: 5px;
+    color: $text-primary;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  &__cover-hint {
+    color: $text-secondary;
+    font-size: 12px;
+  }
+
+  &__cover-preview {
+    position: relative;
+    overflow: hidden;
+    border-radius: 16px;
+    background: $input-background;
+
+    img {
+      display: block;
+      width: 100%;
+      max-height: 300px;
+      object-fit: cover;
+    }
+  }
+
+  &__cover-remove {
+    width: 100%;
+    min-height: 42px;
+    border: none;
+    background: rgb(15 23 42 / 75%);
+    color: #fff;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s ease;
+
+    &:hover {
+      background: rgb(15 23 42 / 90%);
+    }
+  }
+
   &__dates {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));

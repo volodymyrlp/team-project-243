@@ -12,6 +12,7 @@ import type { CityOption } from "../../types/CityOption";
 import type { TripResponse } from "../../types/TripResponse";
 
 const API_URL = import.meta.env.VITE_API_URL;
+const MAX_COVER_SIZE = 10 * 1024 * 1024;
 
 const formatDate = (date: Date) => {
   const year = date.getFullYear();
@@ -35,6 +36,8 @@ export const CreateTripPage = () => {
     isPublic: false,
   });
 
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -87,6 +90,68 @@ export const CreateTripPage = () => {
     }));
 
     setError("");
+  };
+
+  const handleCoverChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      setError("Please select an image file.");
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > MAX_COVER_SIZE) {
+      setError("Cover photo must not exceed 10 MB.");
+      event.target.value = "";
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      setCoverFile(file);
+      setCoverPreview(reader.result as string);
+      setError("");
+    };
+
+    reader.readAsDataURL(file);
+
+    event.target.value = "";
+  };
+
+  const handleRemoveCover = () => {
+    setCoverFile(null);
+    setCoverPreview("");
+    setError("");
+  };
+
+  const uploadCover = async (tripId: string, token: string) => {
+    if (!coverFile) {
+      return;
+    }
+
+    const coverData = new FormData();
+
+    coverData.append("file", coverFile);
+
+    const response = await fetch(`${API_URL}/api/v1/trips/${tripId}/cover`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: coverData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+
+      throw new Error(errorText || "Failed to upload cover photo");
+    }
   };
 
   const handleSubmit = async (event: FormEvent) => {
@@ -173,10 +238,21 @@ export const CreateTripPage = () => {
 
       const createdTrip: TripResponse = await response.json();
 
+      if (coverFile) {
+        await uploadCover(createdTrip.tripId, token);
+      }
+
       navigate(`/trips/${createdTrip.tripId}/itinerary`);
     } catch (error) {
       console.error("Failed to create trip:", error);
-      setError("Failed to create trip. Please try again.");
+
+      if (coverFile) {
+        setError(
+          "Trip was created, but the cover photo could not be uploaded. Please try again.",
+        );
+      } else {
+        setError("Failed to create trip. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -279,6 +355,49 @@ export const CreateTripPage = () => {
                 value={formData.description}
                 onChange={handleChange}
               />
+            </div>
+
+            <div className='create-trip__field'>
+              <label>Cover photo</label>
+
+              {coverPreview ? (
+                <div className='create-trip__cover-preview'>
+                  <img
+                    src={coverPreview}
+                    alt='Selected trip cover preview'
+                  />
+
+                  <button
+                    type='button'
+                    className='create-trip__cover-remove'
+                    onClick={handleRemoveCover}
+                  >
+                    Remove photo
+                  </button>
+                </div>
+              ) : (
+                <label
+                  htmlFor='cover'
+                  className='create-trip__cover-upload'
+                >
+                  <span className='create-trip__cover-icon'>📷</span>
+
+                  <span className='create-trip__cover-title'>
+                    Choose a cover photo
+                  </span>
+
+                  <span className='create-trip__cover-hint'>
+                    JPG, PNG or other image · Max 10 MB
+                  </span>
+
+                  <input
+                    id='cover'
+                    type='file'
+                    accept='image/*'
+                    onChange={handleCoverChange}
+                  />
+                </label>
+              )}
             </div>
 
             <div className='create-trip__dates'>
