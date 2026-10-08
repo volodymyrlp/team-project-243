@@ -6,7 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -14,6 +17,7 @@ import static org.mockito.Mockito.when;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -22,17 +26,26 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.multipart.MultipartFile;
+import travelplanner.dto.trip.PhotoResponse;
 import travelplanner.dto.trip.TripCreateRequest;
 import travelplanner.dto.trip.TripResponse;
 import travelplanner.entity.Itinerary;
+import travelplanner.entity.Photo;
 import travelplanner.entity.Place;
 import travelplanner.entity.Tag;
 import travelplanner.entity.Trip;
 import travelplanner.entity.TripDay;
 import travelplanner.entity.User;
 import travelplanner.exception.EntityNotFoundException;
+import travelplanner.exception.ForbiddenException;
 import travelplanner.mapper.TripMapper;
+import travelplanner.repository.PhotoRepository;
 import travelplanner.repository.TripRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -43,6 +56,12 @@ class TripServiceTest {
 
     @Mock
     private TripMapper tripMapper;
+
+    @Mock
+    private FileStorageService fileStorageService;
+
+    @Mock
+    private PhotoRepository photoRepository;
 
     @InjectMocks
     private TripService tripService;
@@ -139,8 +158,7 @@ class TripServiceTest {
         assertFalse(clonedTrip.getIsPublic());
 
         assertEquals(1, clonedTrip.getTags().size());
-        org.junit.jupiter.api.Assertions.assertTrue(
-                clonedTrip.getTags().contains(tag));
+        assertTrue(clonedTrip.getTags().contains(tag));
         org.junit.jupiter.api.Assertions.assertNotSame(
                 originalTrip.getTags(), clonedTrip.getTags());
 
@@ -353,5 +371,356 @@ class TripServiceTest {
         Trip savedTrip = tripCaptor.getValue();
 
         assertEquals(0, savedTrip.getTripDays().size());
+    }
+
+    @Test
+    void getMyTrips_Success() {
+        User currentUser = new User();
+        currentUser.setUserId(UUID.randomUUID());
+        Pageable pageable = PageRequest.of(0, 10);
+
+        Trip trip = new Trip();
+        trip.setTripId(UUID.randomUUID());
+        trip.setTitle("My Saved Trip");
+
+        TripResponse response = new TripResponse(
+                trip.getTripId(),
+                "My Saved Trip",
+                "Madrid",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                false,
+                LocalDateTime.now()
+        );
+
+        Page<Trip> tripPage = new PageImpl<>(List.of(trip), pageable, 1);
+        when(tripRepository.findAllByOwnerOrderByCreatedAtDesc(currentUser, pageable))
+                .thenReturn(tripPage);
+        when(tripMapper.toResponse(trip)).thenReturn(response);
+
+        Page<TripResponse> result = tripService.getMyTrips(currentUser, pageable);
+
+        assertNotNull(result);
+        assertEquals(1, result.getTotalElements());
+        assertEquals("My Saved Trip", result.getContent().get(0).title());
+    }
+
+    @Test
+    void getPublicTripCatalog_WithSearchQuery_CallsSearchRepositoryMethod() {
+        Pageable pageable = PageRequest.of(0, 10);
+        Trip trip = new Trip();
+        trip.setTripId(UUID.randomUUID());
+        trip.setTitle("Rome Holiday");
+
+        TripResponse response = new TripResponse(
+                trip.getTripId(),
+                "Rome Holiday",
+                "Rome",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                true,
+                LocalDateTime.now()
+        );
+
+        Page<Trip> tripPage = new PageImpl<>(List.of(trip), pageable, 1);
+        when(tripRepository.findAllByIsPublicTrueAndTitleContainingIgnoreCaseOrderByCreatedAtDesc(
+                "Rome", pageable)).thenReturn(tripPage);
+        when(tripMapper.toResponse(trip)).thenReturn(response);
+
+        Page<TripResponse> result = tripService.getPublicTripCatalog("Rome", pageable);
+
+        assertNotNull(result);
+        assertEquals(1, result.getTotalElements());
+        assertEquals("Rome Holiday", result.getContent().get(0).title());
+    }
+
+    @Test
+    void getPublicTripCatalog_WithBlankOrNullSearch_CallsFindAllRepositoryMethod() {
+        Pageable pageable = PageRequest.of(0, 10);
+        Trip trip = new Trip();
+        trip.setTripId(UUID.randomUUID());
+        trip.setTitle("General Trip");
+
+        Page<Trip> tripPage = new PageImpl<>(List.of(trip), pageable, 1);
+        when(tripRepository.findAllByIsPublicTrueOrderByCreatedAtDesc(pageable))
+                .thenReturn(tripPage);
+
+        Page<TripResponse> nullResult = tripService.getPublicTripCatalog(null, pageable);
+        assertNotNull(nullResult);
+
+        Page<TripResponse> blankResult = tripService.getPublicTripCatalog("   ", pageable);
+        assertNotNull(blankResult);
+
+        verify(tripRepository, times(2))
+                .findAllByIsPublicTrueOrderByCreatedAtDesc(pageable);
+    }
+
+    @Test
+    void getTripById_Success() {
+        UUID tripId = UUID.randomUUID();
+        Trip trip = new Trip();
+        trip.setTripId(tripId);
+        trip.setTitle("Found Trip");
+
+        TripResponse response = new TripResponse(
+                tripId,
+                "Found Trip",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                true,
+                LocalDateTime.now()
+        );
+
+        when(tripRepository.findById(tripId)).thenReturn(Optional.of(trip));
+        when(tripMapper.toResponse(trip)).thenReturn(response);
+
+        TripResponse result = tripService.getTripById(tripId);
+
+        assertNotNull(result);
+        assertEquals("Found Trip", result.title());
+    }
+
+    @Test
+    void getTripById_NotFound_ThrowsEntityNotFoundException() {
+        UUID tripId = UUID.randomUUID();
+        when(tripRepository.findById(tripId)).thenReturn(Optional.empty());
+
+        EntityNotFoundException ex = assertThrows(
+                EntityNotFoundException.class,
+                () -> tripService.getTripById(tripId)
+        );
+
+        assertTrue(ex.getMessage().contains(tripId.toString()));
+    }
+
+    @Test
+    void deleteTrip_Success() {
+        UUID tripId = UUID.randomUUID();
+        when(tripRepository.existsById(tripId)).thenReturn(true);
+
+        tripService.deleteTrip(tripId);
+
+        verify(tripRepository, times(1)).deleteById(tripId);
+    }
+
+    @Test
+    void deleteTrip_NotFound_ThrowsEntityNotFoundException() {
+        UUID tripId = UUID.randomUUID();
+        when(tripRepository.existsById(tripId)).thenReturn(false);
+
+        EntityNotFoundException ex = assertThrows(
+                EntityNotFoundException.class,
+                () -> tripService.deleteTrip(tripId)
+        );
+
+        assertTrue(ex.getMessage().contains(tripId.toString()));
+        verify(tripRepository, never()).deleteById(any());
+    }
+
+    @Test
+    void updateTripCover_Success() {
+        UUID tripId = UUID.randomUUID();
+        User currentUser = new User();
+        currentUser.setUserId(UUID.randomUUID());
+
+        Trip trip = new Trip();
+        trip.setTripId(tripId);
+        trip.setOwner(currentUser);
+
+        MultipartFile file = mock(MultipartFile.class);
+        when(tripRepository.findById(tripId)).thenReturn(Optional.of(trip));
+        when(fileStorageService.uploadFile(file)).thenReturn("/uploads/new-cover.jpg");
+        when(tripRepository.save(trip)).thenReturn(trip);
+
+        TripResponse response = new TripResponse(
+                tripId,
+                "Trip Title",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "/uploads/new-cover.jpg",
+                true,
+                LocalDateTime.now()
+        );
+        when(tripMapper.toResponse(trip)).thenReturn(response);
+
+        TripResponse result = tripService.updateTripCover(tripId, file, currentUser);
+
+        assertNotNull(result);
+        assertEquals("/uploads/new-cover.jpg", result.coverUrl());
+        assertEquals("/uploads/new-cover.jpg", trip.getCoverUrl());
+        verify(tripRepository, times(1)).save(trip);
+    }
+
+    @Test
+    void updateTripCover_TripNotFound_ThrowsEntityNotFoundException() {
+        UUID tripId = UUID.randomUUID();
+        User currentUser = new User();
+        currentUser.setUserId(UUID.randomUUID());
+        MultipartFile file = mock(MultipartFile.class);
+
+        when(tripRepository.findById(tripId)).thenReturn(Optional.empty());
+
+        assertThrows(
+                EntityNotFoundException.class,
+                () -> tripService.updateTripCover(tripId, file, currentUser)
+        );
+    }
+
+    @Test
+    void updateTripCover_Forbidden_WhenNotOwner_ThrowsForbiddenException() {
+        UUID tripId = UUID.randomUUID();
+        User owner = new User();
+        owner.setUserId(UUID.randomUUID());
+
+        User differentUser = new User();
+        differentUser.setUserId(UUID.randomUUID());
+
+        Trip trip = new Trip();
+        trip.setTripId(tripId);
+        trip.setOwner(owner);
+
+        MultipartFile file = mock(MultipartFile.class);
+        when(tripRepository.findById(tripId)).thenReturn(Optional.of(trip));
+
+        ForbiddenException ex = assertThrows(
+                ForbiddenException.class,
+                () -> tripService.updateTripCover(tripId, file, differentUser)
+        );
+
+        assertEquals("You do not have permission to update this trip", ex.getMessage());
+        verify(tripRepository, never()).save(any());
+    }
+
+    @Test
+    void uploadTripPhoto_Success() {
+        UUID tripId = UUID.randomUUID();
+        User currentUser = new User();
+        currentUser.setUserId(UUID.randomUUID());
+
+        Trip trip = new Trip();
+        trip.setTripId(tripId);
+        trip.setOwner(currentUser);
+
+        MultipartFile file = mock(MultipartFile.class);
+        when(tripRepository.findById(tripId)).thenReturn(Optional.of(trip));
+        when(fileStorageService.uploadFile(file)).thenReturn("/uploads/photo123.jpg");
+
+        Photo photo = new Photo();
+        photo.setTrip(trip);
+        photo.setUploader(currentUser);
+        photo.setUrl("/uploads/photo123.jpg");
+
+        when(photoRepository.save(any(Photo.class))).thenReturn(photo);
+
+        PhotoResponse response = new PhotoResponse(
+                UUID.randomUUID(),
+                "/uploads/photo123.jpg",
+                currentUser.getUserId(),
+                LocalDateTime.now()
+        );
+        when(tripMapper.toPhotoResponse(photo)).thenReturn(response);
+
+        PhotoResponse result = tripService.uploadTripPhoto(tripId, file, currentUser);
+
+        assertNotNull(result);
+        assertEquals("/uploads/photo123.jpg", result.url());
+        verify(photoRepository, times(1)).save(any(Photo.class));
+    }
+
+    @Test
+    void uploadTripPhoto_TripNotFound_ThrowsEntityNotFoundException() {
+        UUID tripId = UUID.randomUUID();
+        User currentUser = new User();
+        currentUser.setUserId(UUID.randomUUID());
+        MultipartFile file = mock(MultipartFile.class);
+
+        when(tripRepository.findById(tripId)).thenReturn(Optional.empty());
+
+        assertThrows(
+                EntityNotFoundException.class,
+                () -> tripService.uploadTripPhoto(tripId, file, currentUser)
+        );
+    }
+
+    @Test
+    void uploadTripPhoto_Forbidden_WhenNotOwner_ThrowsForbiddenException() {
+        UUID tripId = UUID.randomUUID();
+        User owner = new User();
+        owner.setUserId(UUID.randomUUID());
+
+        User differentUser = new User();
+        differentUser.setUserId(UUID.randomUUID());
+
+        Trip trip = new Trip();
+        trip.setTripId(tripId);
+        trip.setOwner(owner);
+
+        MultipartFile file = mock(MultipartFile.class);
+        when(tripRepository.findById(tripId)).thenReturn(Optional.of(trip));
+
+        ForbiddenException ex = assertThrows(
+                ForbiddenException.class,
+                () -> tripService.uploadTripPhoto(tripId, file, differentUser)
+        );
+
+        assertEquals("You do not have permission to modify this trip", ex.getMessage());
+        verify(photoRepository, never()).save(any());
+    }
+
+    @Test
+    void getTripPhotos_Success() {
+        UUID tripId = UUID.randomUUID();
+        when(tripRepository.existsById(tripId)).thenReturn(true);
+
+        Photo photo = new Photo();
+        photo.setUrl("/uploads/p1.jpg");
+        List<Photo> photos = List.of(photo);
+
+        when(photoRepository.findAllByTripTripId(tripId)).thenReturn(photos);
+
+        PhotoResponse photoResponse = new PhotoResponse(
+                UUID.randomUUID(),
+                "/uploads/p1.jpg",
+                UUID.randomUUID(),
+                LocalDateTime.now()
+        );
+        when(tripMapper.toPhotoResponseList(photos)).thenReturn(List.of(photoResponse));
+
+        List<PhotoResponse> result = tripService.getTripPhotos(tripId);
+
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertEquals("/uploads/p1.jpg", result.get(0).url());
+    }
+
+    @Test
+    void getTripPhotos_NotFound_ThrowsEntityNotFoundException() {
+        UUID tripId = UUID.randomUUID();
+        when(tripRepository.existsById(tripId)).thenReturn(false);
+
+        EntityNotFoundException ex = assertThrows(
+                EntityNotFoundException.class,
+                () -> tripService.getTripPhotos(tripId)
+        );
+
+        assertTrue(ex.getMessage().contains(tripId.toString()));
+        verify(photoRepository, never()).findAllByTripTripId(any());
     }
 }
