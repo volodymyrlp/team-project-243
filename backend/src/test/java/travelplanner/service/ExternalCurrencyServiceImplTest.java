@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
@@ -14,6 +16,7 @@ import java.math.BigDecimal;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -223,5 +226,67 @@ class ExternalCurrencyServiceImplTest {
                 IllegalArgumentException.class,
                 () -> new ExternalCurrencyServiceImpl(builder, "  ")
         );
+    }
+
+    @Test
+    void getExchangeRates_ApiReturnsNullRates_ThrowsCurrencyExchangeException() {
+        String nullRatesJson = "{\"base\":\"USD\",\"rates\":null}";
+        mockServer.expect(requestTo(API_URL + "USD"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess(nullRatesJson, MediaType.APPLICATION_JSON));
+
+        assertThrows(
+                CurrencyExchangeException.class,
+                () -> currencyService.getExchangeRates("USD")
+        );
+        mockServer.verify();
+    }
+
+    @Test
+    void convert_WithSelfProvider_CallsSelfProvider() {
+        @SuppressWarnings("unchecked")
+        ObjectProvider<CurrencyService> selfProvider = mock(ObjectProvider.class);
+        CurrencyService mockProxy = mock(CurrencyService.class);
+        when(selfProvider.getIfAvailable()).thenReturn(mockProxy);
+        when(mockProxy.getExchangeRates("USD")).thenReturn(Map.of("EUR", new BigDecimal("0.85")));
+
+        RestClient.Builder builder = RestClient.builder();
+        ExternalCurrencyServiceImpl serviceWithSelf =
+                new ExternalCurrencyServiceImpl(builder.build(), API_URL, selfProvider);
+
+        BigDecimal result = serviceWithSelf.convert(new BigDecimal("100"), "usd", "eur");
+        assertEquals(new BigDecimal("85.00"), result);
+    }
+
+    @Test
+    void convert_WithSelfProviderReturningNull_FallsBackToThis() {
+        @SuppressWarnings("unchecked")
+        ObjectProvider<CurrencyService> selfProvider = mock(ObjectProvider.class);
+        when(selfProvider.getIfAvailable()).thenReturn(null);
+
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer customMockServer = MockRestServiceServer.bindTo(builder).build();
+        ExternalCurrencyServiceImpl serviceWithNullSelf =
+                new ExternalCurrencyServiceImpl(builder.build(), API_URL, selfProvider);
+
+        customMockServer.expect(requestTo(API_URL + "USD"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess(SAMPLE_JSON, MediaType.APPLICATION_JSON));
+
+        BigDecimal result = serviceWithNullSelf.convert(new BigDecimal("100"), "USD", "EUR");
+        assertEquals(new BigDecimal("88.20"), result);
+        customMockServer.verify();
+    }
+
+    @Test
+    void constructor_ApiUrlFormatting() {
+        RestClient.Builder builder = RestClient.builder();
+        ExternalCurrencyServiceImpl serviceWithSlash =
+                new ExternalCurrencyServiceImpl(builder.build(), "https://api.example.com/");
+        assertNotNull(serviceWithSlash);
+
+        ExternalCurrencyServiceImpl serviceWithoutSlash =
+                new ExternalCurrencyServiceImpl(builder.build(), "https://api.example.com");
+        assertNotNull(serviceWithoutSlash);
     }
 }
