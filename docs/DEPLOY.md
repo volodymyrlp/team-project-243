@@ -243,6 +243,46 @@ and apply it in a `WebMvcConfigurer` (or Spring Security CORS config):
 - **ORS API key:** register at <https://openrouteservice.org/dev/#/signup>, create a token,
   set it as `ORS_API_KEY` in Render. Never commit it.
 - **Nominatim:** no key, but the `User-Agent` must carry a real contact email (usage policy).
+- **Exchange rates:** the current provider (`api.exchangerate-api.com`) needs no key. The URL lives
+  in `render.yaml` as a plain `value:` for both services, so the provider can be swapped without a
+  code release.
+
+### A secret must never have a default
+
+Write a secret as `${THE_KEY}` in `application.yml`. Never as `${THE_KEY:}` and never with a
+fallback value.
+
+Two reasons, both learned the hard way. A default in a public repository is the secret — that is
+why `JWT_SECRET` has none, after a first version shipped `${JWT_SECRET:dummy_secret_...}` and would
+have let anyone forge a token. And `env-check` derives the list of required variables by reading
+every placeholder in `application.yml` that has **no** default, so a secret written with one is
+invisible to it and goes missing in production instead of failing the pull request.
+
+So when the exchange-rate provider eventually needs a key: `${EXCHANGE_API_KEY}` in
+`application.yml`, `sync: false` in `render.yaml` for **both** services, value typed into the Render
+dashboard under Environment.
+
+## Migrations — what the pipeline checks
+
+Three gates stand between a changeset and production. None of them replaces reading the SQL.
+
+**`migration-check` (on every pull request).** Restores the latest successful `backup.yml` artifact
+— a real dump of production, with real rows — and applies the branch's changesets on top. This is
+what catches a `NOT NULL` added over existing data, a `UNIQUE` over duplicates, or a checksum drift
+from editing a changeset that already ran. If no artifact is available (none yet, or the 90-day
+retention expired) it falls back to replaying `main` onto an empty database and says so in the log.
+The weaker check is deliberate: a missing backup should not turn CI red.
+
+**`migration-guard` (on pull requests into `main`).** If the release touches
+`db/changelog/changes/`, it refuses to pass unless a successful backup exists from the last 24
+hours. Our migrations cannot be rolled back, so that dump is the only way back, and a day-old one
+costs a day of data. To unblock it: `gh workflow run backup.yml`, wait for green, re-run the check.
+
+**`Smoke` (after the release lands on `main`).** Once Render reports the deploy live, it compares
+the number of changeset files in the repository with the row count in production's
+`DATABASECHANGELOG`. A deploy can go live while Liquibase applied nothing, and `/actuator/health`
+stays 200 through exactly that — counting is the only honest check. It assumes one changeset per
+file, which holds today; if that ever changes, this check has to change with it.
 
 ## Auto-deploy
 

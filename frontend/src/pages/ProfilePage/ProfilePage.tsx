@@ -570,7 +570,7 @@ export const ProfilePage = () => {
                   <div className='trip-card__cover'>
                     {trip.coverUrl ? (
                       <img
-                        src={trip.coverUrl}
+                        src={`${import.meta.env.VITE_API_URL}${trip.coverUrl}`}
                         alt={`${trip.title} cover`}
                       />
                     ) : (
