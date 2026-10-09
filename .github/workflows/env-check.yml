@@ -16,8 +16,11 @@ jobs:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
         run: |
           if [ -z "$RENDER_API_KEY" ]; then
-            echo "RENDER_API_KEY is not set, so this check cannot run."
-            exit 1
+            # Dependabot pull requests never get repository secrets, so this
+            # is normal there. Say so and pass, instead of painting every
+            # dependency bump red.
+            echo "RENDER_API_KEY is not available, so the Render side was not checked."
+            exit 0
           fi
 
           # A placeholder written as ${VAR} aborts startup when VAR is absent,
