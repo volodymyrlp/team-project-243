@@ -37,6 +37,8 @@ services:
         sync: false
       - key: SUPABASE_S3_SECRET_ACCESS_KEY
         sync: false
+      - key: EXCHANGE_API_URL
+        value: https://api.exchangerate-api.com/v4/latest/
 
   - type: web
     name: travel-planner-backend-staging
@@ -76,3 +78,5 @@ services:
         sync: false
       - key: SUPABASE_S3_SECRET_ACCESS_KEY
         sync: false
+      - key: EXCHANGE_API_URL
+        value: https://api.exchangerate-api.com/v4/latest/

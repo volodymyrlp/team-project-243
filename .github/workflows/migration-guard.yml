@@ -1,0 +1,59 @@
+name: Migration guard
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  fresh-backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Does this release carry a migration?
+        id: migrations
+        run: |
+          git fetch --no-tags origin main
+          changed=$(git diff --name-only origin/main...HEAD \
+            -- backend/src/main/resources/db/changelog/changes/)
+          if [ -z "$changed" ]; then
+            echo "No migration in this release."
+            echo "carries=no" >> "$GITHUB_OUTPUT"
+          else
+            echo "$changed"
+            echo "carries=yes" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: The backup must be newer than the migration
+        if: steps.migrations.outputs.carries == 'yes'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Our migrations have no rollback. Every changeset is raw SQL, and
+          # liquibase rollback was rehearsed on staging and simply fails. So the
+          # backup is the only way back, and a day-old one loses a day of data.
+          last=$(gh run list --workflow=backup.yml --status success \
+                   --limit 1 --json createdAt --jq '.[0].createdAt')
+
+          if [ -z "$last" ]; then
+            echo "No successful backup exists at all. Run the Backup workflow first."
+            exit 1
+          fi
+
+          age=$(( ( $(date -u +%s) - $(date -u -d "$last" +%s) ) / 3600 ))
+          echo "Last good backup: $last ($age h ago)"
+
+          if [ "$age" -gt 24 ]; then
+            echo "That backup is older than 24 h and this release changes the schema."
+            echo "Run the Backup workflow, wait for it to pass, then re-run this check:"
+            echo "  gh workflow run backup.yml"
+            exit 1
+          fi
+
+          echo "Recent enough. If this migration destroys something, that dump is the way back."

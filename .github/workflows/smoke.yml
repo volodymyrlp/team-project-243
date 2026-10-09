@@ -152,3 +152,35 @@ jobs:
             echo "Registration and login fail in the browser only, which no other check sees."
             exit 1
           fi
+
+      - name: Every migration in the repository reached production
+        if: steps.backend.outputs.changed == 'true'
+        env:
+          MYSQL_PWD: ${{ secrets.AIVEN_MYSQL_PASSWORD }}
+          MYSQL_HOST: travel-mysql-mr-b549.d.aivencloud.com
+          MYSQL_PORT: '18032'
+          MYSQL_USER: avnadmin
+        run: |
+          # A deploy can go live while Liquibase quietly applied nothing, and
+          # health stays 200 either way. Counting is the only honest check.
+          if [ -z "$MYSQL_PWD" ]; then
+            echo "AIVEN_MYSQL_PASSWORD is not set, so the schema cannot be verified."
+            exit 0
+          fi
+
+          expected=$(ls backend/src/main/resources/db/changelog/changes/*.sql | wc -l | tr -d ' ')
+          applied=$(docker run --rm -e MYSQL_PWD mysql:8.4 \
+            mysql -h "$MYSQL_HOST" -P "$MYSQL_PORT" -u "$MYSQL_USER" \
+              --ssl-mode=REQUIRED -N -B \
+              -e "SELECT COUNT(*) FROM travel.DATABASECHANGELOG")
+
+          echo "changesets in the repository: $expected"
+          echo "changesets applied in production: $applied"
+
+          # One file holds exactly one changeset in this repository. If that ever
+          # stops being true, this check is the thing that has to change.
+          if [ "$applied" -lt "$expected" ]; then
+            echo "Production is missing $(( expected - applied )) migration(s)."
+            echo "The container is serving new code against an older schema."
+            exit 1
+          fi
