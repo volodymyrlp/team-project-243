@@ -91,6 +91,9 @@ jobs:
     needs: detect
     if: needs.detect.outputs.backend == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
     services:
       mysql:
         image: mysql:8.4
@@ -108,8 +111,60 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - name: Apply the migrations production already has
+
+      - name: Use production's real data as the starting point
+        id: baseline
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
+          # An empty database cannot catch the migrations that actually hurt:
+          # a NOT NULL added over existing rows, a UNIQUE over duplicates, or a
+          # changeset edited after it already ran. The nightly Backup job keeps
+          # a real dump of production, so start from that instead.
+          run_id=$(gh run list --workflow=backup.yml --status success \
+                     --limit 1 --json databaseId --jq '.[0].databaseId')
+
+          if [ -z "$run_id" ]; then
+            echo "No successful backup run to borrow a baseline from."
+            echo "restored=no" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if ! gh run download "$run_id" --dir /tmp/baseline; then
+            echo "The backup artifact is gone or expired (they live 90 days)."
+            echo "restored=no" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # travel-*.sql.gz is production. travel_staging-*.sql.gz is not what
+          # we want here, and the dash in the pattern keeps it out.
+          dump=$(find /tmp/baseline -name 'travel-*.sql.gz' | head -1)
+          if [ -z "$dump" ]; then
+            echo "That artifact carries no production dump."
+            echo "restored=no" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Restoring $(basename "$dump")"
+          gunzip -c "$dump" | docker run --rm -i --network host -e MYSQL_PWD=test \
+            mysql:8.4 mysql -h 127.0.0.1 -P 3306 -u root
+
+          # The dump carries the lock row with it, and the runner that held the
+          # lock is long gone. Liquibase would wait for it forever.
+          docker run --rm --network host -e MYSQL_PWD=test mysql:8.4 \
+            mysql -h 127.0.0.1 -P 3306 -u root \
+            -e "UPDATE travel.DATABASECHANGELOGLOCK SET LOCKED = 0, LOCKGRANTED = NULL, LOCKEDBY = NULL"
+
+          applied=$(docker run --rm --network host -e MYSQL_PWD=test mysql:8.4 \
+            mysql -h 127.0.0.1 -P 3306 -u root -N -B \
+            -e "SELECT COUNT(*) FROM travel.DATABASECHANGELOG")
+          echo "Baseline is production as of that backup: $applied changesets, real rows."
+          echo "restored=yes" >> "$GITHUB_OUTPUT"
+
+      - name: Fall back to replaying main when there was no backup
+        if: steps.baseline.outputs.restored != 'yes'
+        run: |
+          # Weaker than the real thing, but better than skipping the check.
           git fetch --no-tags origin main
           mkdir -p /tmp/base
           git archive origin/main backend/src/main/resources | tar -x -C /tmp/base
@@ -118,6 +173,7 @@ jobs:
             "lpm add mysql --global >/dev/null && liquibase --search-path=/lb \
              --changeLogFile=db/changelog/db.changelog-master.yaml \
              --url='jdbc:mysql://127.0.0.1:3306/travel' --username=root --password=test update"
+
       - name: Apply this branch's migrations on top
         run: |
           docker run --rm --network host -v "$PWD/backend/src/main/resources:/lb" \
