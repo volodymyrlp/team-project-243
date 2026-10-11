@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { ChangeEvent, FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "./ProfilePage.scss";
 import { Header } from "../../components/Header";
@@ -6,8 +7,13 @@ import type { UserProfile } from "../../types/UserProfile";
 import type { UserUpdateRequest } from "../../types/UserUpdateRequest";
 import type { TripResponse } from "../../types/TripResponse";
 
+const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
+
+const ALLOWED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
 export const ProfilePage = () => {
   const navigate = useNavigate();
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
 
@@ -21,11 +27,26 @@ export const ProfilePage = () => {
     avatarUrl: null,
   });
 
+  const [selectedAvatarFile, setSelectedAvatarFile] = useState<File | null>(
+    null,
+  );
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
+
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
   const [isServerWaking, setIsServerWaking] = useState(false);
+
+  useEffect(() => {
+    if (!avatarPreviewUrl?.startsWith("blob:")) {
+      return;
+    }
+
+    return () => {
+      URL.revokeObjectURL(avatarPreviewUrl);
+    };
+  }, [avatarPreviewUrl]);
 
   useEffect(() => {
     let isMounted = true;
@@ -89,7 +110,7 @@ export const ProfilePage = () => {
 
           setEditData({
             fullName: data.fullName,
-            avatarUrl: data.avatarUrl,
+            avatarUrl: null,
           });
 
           return;
@@ -115,7 +136,7 @@ export const ProfilePage = () => {
 
             setEditData({
               fullName: data.fullName,
-              avatarUrl: data.avatarUrl,
+              avatarUrl: null,
             });
 
             setError("");
@@ -258,11 +279,36 @@ export const ProfilePage = () => {
     }
   };
 
-  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     setEditData((prev) => ({
       ...prev,
       [event.target.name]: event.target.value,
     }));
+  };
+
+  const handleAvatarChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    setError("");
+
+    if (!ALLOWED_AVATAR_TYPES.includes(file.type)) {
+      setError("Please select a JPEG, PNG, or WebP image.");
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > MAX_AVATAR_SIZE) {
+      setError("The image must be 5 MB or smaller.");
+      event.target.value = "";
+      return;
+    }
+
+    setSelectedAvatarFile(file);
+    setAvatarPreviewUrl(URL.createObjectURL(file));
   };
 
   const handleEdit = () => {
@@ -272,8 +318,15 @@ export const ProfilePage = () => {
 
     setEditData({
       fullName: profile.fullName,
-      avatarUrl: profile.avatarUrl,
+      avatarUrl: null,
     });
+
+    setSelectedAvatarFile(null);
+    setAvatarPreviewUrl(null);
+
+    if (avatarInputRef.current) {
+      avatarInputRef.current.value = "";
+    }
 
     setError("");
     setIsEditing(true);
@@ -286,14 +339,21 @@ export const ProfilePage = () => {
 
     setEditData({
       fullName: profile.fullName,
-      avatarUrl: profile.avatarUrl,
+      avatarUrl: null,
     });
+
+    setSelectedAvatarFile(null);
+    setAvatarPreviewUrl(null);
+
+    if (avatarInputRef.current) {
+      avatarInputRef.current.value = "";
+    }
 
     setError("");
     setIsEditing(false);
   };
 
-  const handleSave = async (event: React.FormEvent) => {
+  const handleSave = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const token = localStorage.getItem("token");
@@ -307,6 +367,61 @@ export const ProfilePage = () => {
 
     try {
       const API_URL = import.meta.env.VITE_API_URL;
+      let avatarKey: string | null = null;
+
+      if (selectedAvatarFile) {
+        const presignResponse = await fetch(
+          `${API_URL}/api/v1/uploads/presign`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              contentType: selectedAvatarFile.type,
+              fileSize: selectedAvatarFile.size,
+            }),
+          },
+        );
+
+        if (presignResponse.status === 401 || presignResponse.status === 403) {
+          localStorage.removeItem("token");
+          navigate("/login");
+          return;
+        }
+
+        if (!presignResponse.ok) {
+          throw new Error(
+            `Failed to prepare avatar upload. Status: ${presignResponse.status}`,
+          );
+        }
+
+        const presignData: {
+          uploadUrl: string;
+          key: string;
+        } = await presignResponse.json();
+
+        if (!presignData.uploadUrl || !presignData.key) {
+          throw new Error("The server returned invalid upload information.");
+        }
+
+        const uploadResponse = await fetch(presignData.uploadUrl, {
+          method: "PUT",
+          headers: {
+            "Content-Type": selectedAvatarFile.type,
+          },
+          body: selectedAvatarFile,
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error(
+            `Failed to upload avatar. Status: ${uploadResponse.status}`,
+          );
+        }
+
+        avatarKey = presignData.key;
+      }
 
       const response = await fetch(`${API_URL}/api/v1/users/me`, {
         method: "PUT",
@@ -316,7 +431,7 @@ export const ProfilePage = () => {
         },
         body: JSON.stringify({
           fullName: editData.fullName,
-          avatarUrl: editData.avatarUrl,
+          avatarUrl: avatarKey,
         }),
       });
 
@@ -337,13 +452,22 @@ export const ProfilePage = () => {
 
       setEditData({
         fullName: updatedProfile.fullName,
-        avatarUrl: updatedProfile.avatarUrl,
+        avatarUrl: null,
       });
+
+      setSelectedAvatarFile(null);
+      setAvatarPreviewUrl(null);
+
+      if (avatarInputRef.current) {
+        avatarInputRef.current.value = "";
+      }
 
       setIsEditing(false);
     } catch (e) {
       console.error("Profile update failed", e);
-      setError("We couldn't update your profile. Please try again.");
+      setError(
+        "We couldn't save your profile or upload the photo. Please try again.",
+      );
     } finally {
       setIsSaving(false);
     }
@@ -393,6 +517,8 @@ export const ProfilePage = () => {
 
   const avatarLetter = profile.fullName.charAt(0).toUpperCase();
 
+  const displayedAvatarUrl = avatarPreviewUrl ?? profile.avatarUrl;
+
   return (
     <main className='profile-page'>
       <Header />
@@ -413,9 +539,9 @@ export const ProfilePage = () => {
           <div className='profile-card__top'>
             <div className='profile-card__avatar-wrapper'>
               <div className='profile-card__avatar'>
-                {profile.avatarUrl ? (
+                {displayedAvatarUrl ? (
                   <img
-                    src={profile.avatarUrl}
+                    src={displayedAvatarUrl}
                     alt={profile.fullName}
                   />
                 ) : (
@@ -424,13 +550,24 @@ export const ProfilePage = () => {
               </div>
 
               {isEditing && (
-                <button
-                  type='button'
-                  className='profile-card__avatar-button'
-                  disabled
-                >
-                  Change photo
-                </button>
+                <>
+                  <input
+                    ref={avatarInputRef}
+                    type='file'
+                    accept='image/jpeg,image/png,image/webp'
+                    onChange={handleAvatarChange}
+                    hidden
+                  />
+
+                  <button
+                    type='button'
+                    className='profile-card__avatar-button'
+                    onClick={() => avatarInputRef.current?.click()}
+                    disabled={isSaving}
+                  >
+                    {selectedAvatarFile ? "Change photo" : "Choose photo"}
+                  </button>
+                </>
               )}
             </div>
 
@@ -475,7 +612,7 @@ export const ProfilePage = () => {
                   type='text'
                   value={isEditing ? editData.fullName : profile.fullName}
                   onChange={handleChange}
-                  disabled={!isEditing}
+                  disabled={!isEditing || isSaving}
                   required
                 />
               </label>
