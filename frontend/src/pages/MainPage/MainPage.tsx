@@ -1,4 +1,8 @@
 import { Link } from "react-router-dom";
+import { Header } from "../../components/Header";
+import { WorldMap } from "../../components/WorldMap/WorldMap";
+import type { Country } from "../../types/Country";
+
 import logo from "../../assets/images/logo.webp";
 
 import spain from "../../assets/images/SpainImage.webp";
@@ -21,9 +25,6 @@ import reviewer4 from "../../assets/images/4.webp";
 import reviewer5 from "../../assets/images/5.webp";
 
 import "./MainPage.scss";
-import { Header } from "../../components/Header";
-import type { Country } from "../../types/Country";
-import { WorldMap } from "../../components/WorldMap/WorldMap";
 
 const countries: Country[] = [
   {
@@ -107,16 +108,18 @@ const reviews = [
 ];
 
 export const MainPage = () => {
-  const token = localStorage.getItem("token");
-  const isAuthenticated = Boolean(token);
+  const isAuthenticated = Boolean(localStorage.getItem("token"));
+  const ctaLink = isAuthenticated ? "/trips/create" : "/registration";
 
   return (
-    <main className="main-before-auth">
-      <section className="main-before-auth__hero">
-        <Header />
+    <main className='main-before-auth'>
+      <section className='main-before-auth__hero'>
+        <div className='main-before-auth__header'>
+          <Header />
+        </div>
 
-        <div className="main-before-auth__hero-content">
-          <span className="main-before-auth__eyebrow">
+        <div className='main-before-auth__hero-content'>
+          <span className='main-before-auth__eyebrow'>
             YOUR NEXT ADVENTURE STARTS HERE
           </span>
 
@@ -135,19 +138,17 @@ export const MainPage = () => {
           </p>
 
           <Link
-            to={isAuthenticated ? "/trips/create" : "/registration"}
-            className="main-before-auth__cta-button"
+            to={ctaLink}
+            className='main-before-auth__cta-button'
           >
             {isAuthenticated ? "Create your trip" : "Start planning"}
           </Link>
         </div>
       </section>
 
-      <section className="main-before-auth__countries">
-        <div className="main-before-auth__section-heading">
-          <span className="main-before-auth__section-label">
-            DESTINATIONS
-          </span>
+      <section className='main-before-auth__countries'>
+        <div className='main-before-auth__section-heading'>
+          <span className='main-before-auth__section-label'>DESTINATIONS</span>
 
           <h2>Top 5 countries to spark your wanderlust</h2>
 
@@ -157,7 +158,7 @@ export const MainPage = () => {
           </p>
         </div>
 
-        <div className="main-before-auth__countries-grid">
+        <div className='main-before-auth__countries-grid'>
           {countries.map((country, index) => (
             <article
               className={`country-card ${
@@ -165,25 +166,24 @@ export const MainPage = () => {
               }`}
               key={country.name}
             >
-              <div className="country-card__image-wrapper">
+              <div className='country-card__image-wrapper'>
                 <img
                   src={country.image}
-                  alt={country.name}
-                  className="country-card__image"
+                  alt={`${country.name} destination`}
+                  className='country-card__image'
+                  loading='lazy'
                 />
 
-                <span className="country-card__rank">#{index + 1}</span>
+                <span className='country-card__rank'>#{index + 1}</span>
               </div>
 
-              <div className="country-card__content">
+              <div className='country-card__content'>
                 <h3>
-                  <span>{country.flag}</span>
+                  <span aria-hidden='true'>{country.flag}</span>
                   {country.name}
                 </h3>
 
-                <span className="country-card__nights">
-                  {country.nights}
-                </span>
+                <span className='country-card__nights'>{country.nights}</span>
 
                 <p>{country.description}</p>
               </div>
@@ -192,11 +192,26 @@ export const MainPage = () => {
         </div>
       </section>
 
-      <WorldMap />
+      <section className='main-before-auth__map-section'>
+        <div className='main-before-auth__section-heading'>
+          <span className='main-before-auth__section-label'>
+            EXPLORE THE WORLD
+          </span>
 
-      <section className="main-before-auth__how-it-works">
-        <div className="main-before-auth__how-heading">
-          <span>HOW IT WORKS</span>
+          <h2>Your next destination is waiting</h2>
+
+          <p>
+            Get inspired by places around the world and start thinking about
+            where your next journey could take you.
+          </p>
+        </div>
+
+        <WorldMap />
+      </section>
+
+      <section className='main-before-auth__how-it-works'>
+        <div className='main-before-auth__section-heading'>
+          <span className='main-before-auth__section-label'>HOW IT WORKS</span>
 
           <h2>Start planning your next adventure</h2>
 
@@ -206,11 +221,16 @@ export const MainPage = () => {
           </p>
         </div>
 
-        <div className="main-before-auth__steps">
-          <article className="main-before-auth__step">
-            <div className="main-before-auth__step-icon">👤</div>
+        <div className='main-before-auth__steps'>
+          <article className='main-before-auth__step'>
+            <div
+              className='main-before-auth__step-icon'
+              aria-hidden='true'
+            >
+              👤
+            </div>
 
-            <span className="main-before-auth__step-number">01</span>
+            <span className='main-before-auth__step-number'>01</span>
 
             <h3>Create an account</h3>
 
@@ -220,10 +240,15 @@ export const MainPage = () => {
             </p>
           </article>
 
-          <article className="main-before-auth__step">
-            <div className="main-before-auth__step-icon">📍</div>
+          <article className='main-before-auth__step'>
+            <div
+              className='main-before-auth__step-icon'
+              aria-hidden='true'
+            >
+              📍
+            </div>
 
-            <span className="main-before-auth__step-number">02</span>
+            <span className='main-before-auth__step-number'>02</span>
 
             <h3>Create your trip</h3>
 
@@ -233,10 +258,15 @@ export const MainPage = () => {
             </p>
           </article>
 
-          <article className="main-before-auth__step">
-            <div className="main-before-auth__step-icon">🌍</div>
+          <article className='main-before-auth__step'>
+            <div
+              className='main-before-auth__step-icon'
+              aria-hidden='true'
+            >
+              🌍
+            </div>
 
-            <span className="main-before-auth__step-number">03</span>
+            <span className='main-before-auth__step-number'>03</span>
 
             <h3>Plan &amp; explore</h3>
 
@@ -248,16 +278,16 @@ export const MainPage = () => {
         </div>
 
         <Link
-          to={isAuthenticated ? "/trips/create" : "/registration"}
-          className="main-before-auth__how-button"
+          to={ctaLink}
+          className='main-before-auth__how-button'
         >
           {isAuthenticated ? "Create your trip" : "Create an account"}
         </Link>
       </section>
 
-      <section className="main-before-auth__partners">
-        <div className="main-before-auth__section-heading">
-          <span className="main-before-auth__section-label">
+      <section className='main-before-auth__partners'>
+        <div className='main-before-auth__section-heading'>
+          <span className='main-before-auth__section-label'>
             TRAVEL RESOURCES
           </span>
 
@@ -269,97 +299,126 @@ export const MainPage = () => {
           </p>
         </div>
 
-        <div className="partners-grid">
+        <div className='partners-grid'>
           <a
-            className="partner-card"
-            href="https://www.airbnb.com/"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Visit Airbnb"
+            className='partner-card'
+            href='https://www.airbnb.com/'
+            target='_blank'
+            rel='noopener noreferrer'
+            aria-label='Visit Airbnb (opens in a new tab)'
           >
-            <img src={airbnbLogo} alt="Airbnb" />
+            <img
+              src={airbnbLogo}
+              alt='Airbnb'
+              loading='lazy'
+            />
           </a>
 
           <a
-            className="partner-card"
-            href="https://www.booking.com/"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Visit Booking.com"
+            className='partner-card'
+            href='https://www.booking.com/'
+            target='_blank'
+            rel='noopener noreferrer'
+            aria-label='Visit Booking.com (opens in a new tab)'
           >
-            <img src={bookingLogo} alt="Booking.com" />
+            <img
+              src={bookingLogo}
+              alt='Booking.com'
+              loading='lazy'
+            />
           </a>
 
           <a
-            className="partner-card"
-            href="https://www.ryanair.com/"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Visit Ryanair"
+            className='partner-card'
+            href='https://www.ryanair.com/'
+            target='_blank'
+            rel='noopener noreferrer'
+            aria-label='Visit Ryanair (opens in a new tab)'
           >
-            <img src={ryanairLogo} alt="Ryanair" />
+            <img
+              src={ryanairLogo}
+              alt='Ryanair'
+              loading='lazy'
+            />
           </a>
 
           <a
-            className="partner-card"
-            href="https://wizzair.com/"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Visit Wizz Air"
+            className='partner-card'
+            href='https://wizzair.com/'
+            target='_blank'
+            rel='noopener noreferrer'
+            aria-label='Visit Wizz Air (opens in a new tab)'
           >
-            <img src={wizzairLogo} alt="Wizz Air" />
+            <img
+              src={wizzairLogo}
+              alt='Wizz Air'
+              loading='lazy'
+            />
           </a>
 
-          <div className="partner-card">
-            <img src={mastercardLogo} alt="Mastercard" />
+          <div className='partner-card partner-card--static'>
+            <img
+              src={mastercardLogo}
+              alt='Mastercard'
+              loading='lazy'
+            />
           </div>
 
           <a
-            className="partner-card"
-            href="https://www.visa.com/"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Visit Visa"
+            className='partner-card'
+            href='https://www.visa.com/'
+            target='_blank'
+            rel='noopener noreferrer'
+            aria-label='Visit Visa (opens in a new tab)'
           >
-            <img src={visaLogo} alt="Visa" />
+            <img
+              src={visaLogo}
+              alt='Visa'
+              loading='lazy'
+            />
           </a>
         </div>
       </section>
 
-      <section className="main-before-auth__reviews">
-        <div className="main-before-auth__section-heading">
-          <span className="main-before-auth__section-label">
+      <section className='main-before-auth__reviews'>
+        <div className='main-before-auth__section-heading'>
+          <span className='main-before-auth__section-label'>
             TRAVELERS' STORIES
           </span>
 
           <h2>What travelers say about MriyaTrip</h2>
 
           <p>
-            Discover how MriyaTrip helps travelers organize their journeys
-            and plan their next adventures.
+            Discover how MriyaTrip helps travelers organize their journeys and
+            plan their next adventures.
           </p>
         </div>
 
-        <div className="main-before-auth__reviews-grid">
+        <div className='main-before-auth__reviews-grid'>
           {reviews.map((review) => (
-            <article className="review-card" key={review.id}>
+            <article
+              className='review-card'
+              key={review.id}
+            >
               <div
-                className="review-card__stars"
-                aria-label="5 out of 5 stars"
+                className='review-card__stars'
+                role='img'
+                aria-label='5 out of 5 stars'
               >
                 ★★★★★
               </div>
 
               <blockquote>{review.text}</blockquote>
 
-              <div className="review-card__author">
+              <div className='review-card__author'>
                 <img
                   src={review.avatar}
-                  alt={review.name}
-                  className="review-card__avatar"
+                  alt=''
+                  className='review-card__avatar'
+                  loading='lazy'
                 />
 
-                <div>
+                <div className='review-card__author-details'>
                   <strong>{review.name}</strong>
                   <span>{review.role}</span>
                 </div>
@@ -369,9 +428,9 @@ export const MainPage = () => {
         </div>
       </section>
 
-      <section className="main-before-auth__final-cta">
-        <div className="main-before-auth__final-cta-content">
-          <span className="main-before-auth__section-label">
+      <section className='main-before-auth__final-cta'>
+        <div className='main-before-auth__final-cta-content'>
+          <span className='main-before-auth__section-label'>
             YOUR JOURNEY AWAITS
           </span>
 
@@ -383,20 +442,21 @@ export const MainPage = () => {
           </p>
 
           <Link
-            to={isAuthenticated ? "/trips/create" : "/registration"}
-            className="main-before-auth__cta-button main-before-auth__cta-button--light"
+            to={ctaLink}
+            className='main-before-auth__cta-button main-before-auth__cta-button--light'
           >
-            Create your first trip
+            {isAuthenticated ? "Create your first trip" : "Start your journey"}
           </Link>
         </div>
       </section>
 
-      <footer className="main-before-auth__footer">
-        <div className="main-before-auth__footer-brand">
+      <footer className='main-before-auth__footer'>
+        <div className='main-before-auth__footer-brand'>
           <img
             src={logo}
-            alt="MriyaTrip"
-            className="main-before-auth__footer-logo"
+            alt=''
+            className='main-before-auth__footer-logo'
+            loading='lazy'
           />
 
           <span>MriyaTrip</span>
@@ -404,8 +464,8 @@ export const MainPage = () => {
 
         <p>Plan less. Travel more.</p>
 
-        <span className="main-before-auth__copyright">
-          © 2026 MriyaTrip. All rights reserved.
+        <span className='main-before-auth__copyright'>
+          © {new Date().getFullYear()} MriyaTrip. All rights reserved.
         </span>
       </footer>
     </main>
