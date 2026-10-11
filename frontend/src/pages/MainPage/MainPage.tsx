@@ -14,9 +14,9 @@ import france from "../../assets/images/FranceImage.webp";
 import airbnbLogo from "../../assets/images/Airbnb.webp";
 import bookingLogo from "../../assets/images/booking.svg";
 import mastercardLogo from "../../assets/images/Mastercard.svg";
-import ryanairLogo from "../../assets/images/Ryanair.svg";
+import ryanairLogo from "../../assets/images/Ryanair.webp";
 import visaLogo from "../../assets/images/Visa.webp";
-import wizzairLogo from "../../assets/images/wizzair.webp";
+import wizzairLogo from "../../assets/images/wizzair.svg";
 
 import reviewer1 from "../../assets/images/1.webp";
 import reviewer2 from "../../assets/images/2.webp";
@@ -193,19 +193,6 @@ export const MainPage = () => {
       </section>
 
       <section className='main-before-auth__map-section'>
-        <div className='main-before-auth__section-heading'>
-          <span className='main-before-auth__section-label'>
-            EXPLORE THE WORLD
-          </span>
-
-          <h2>Your next destination is waiting</h2>
-
-          <p>
-            Get inspired by places around the world and start thinking about
-            where your next journey could take you.
-          </p>
-        </div>
-
         <WorldMap />
       </section>
 
@@ -356,13 +343,19 @@ export const MainPage = () => {
             />
           </a>
 
-          <div className='partner-card partner-card--static'>
+          <a
+            className='partner-card'
+            href='https://www.mastercard.com/'
+            target='_blank'
+            rel='noopener noreferrer'
+            aria-label='Visit Mastercard (opens in a new tab)'
+          >
             <img
               src={mastercardLogo}
               alt='Mastercard'
               loading='lazy'
             />
-          </div>
+          </a>
 
           <a
             className='partner-card'
