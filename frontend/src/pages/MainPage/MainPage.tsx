@@ -16,13 +16,12 @@ import bookingLogo from "../../assets/images/booking.svg";
 import mastercardLogo from "../../assets/images/Mastercard.svg";
 import ryanairLogo from "../../assets/images/Ryanair.webp";
 import visaLogo from "../../assets/images/Visa.webp";
-import wizzairLogo from "../../assets/images/wizzair.svg";
+import wizzairLogo from "../../assets/images/wizzair.webp";
 
 import reviewer1 from "../../assets/images/1.webp";
 import reviewer2 from "../../assets/images/2.webp";
 import reviewer3 from "../../assets/images/3.webp";
 import reviewer4 from "../../assets/images/4.webp";
-import reviewer5 from "../../assets/images/5.webp";
 
 import "./MainPage.scss";
 
@@ -72,38 +71,31 @@ const countries: Country[] = [
 const reviews = [
   {
     id: 1,
-    name: "Kateryna",
+    name: "Maksym",
     role: "Travel Blogger",
     avatar: reviewer1,
     text: "Planning a trip became so simple when all the interesting places are instantly visible on the map. Definitely bringing this on all my future travels!",
   },
   {
     id: 2,
-    name: "Maksym M.",
+    name: "Kateryna",
     role: "Traveler",
     avatar: reviewer2,
     text: "I used to put everything into Excel sheets and print out tons of paper. MriyaTrip helps me keep my travel plans organized in one place.",
   },
   {
     id: 3,
-    name: "Anna",
+    name: "Andrii",
     role: "Travel Enthusiast",
     avatar: reviewer3,
     text: "Having all my destinations in one place makes planning a trip much easier. I can organize my ideas before setting off on an adventure.",
   },
   {
     id: 4,
-    name: "Andrii",
+    name: "Anna",
     role: "Frequent Traveler",
     avatar: reviewer4,
     text: "I love having a clear overview of the places I want to visit. It makes preparing for a new journey feel much more organized.",
-  },
-  {
-    id: 5,
-    name: "Olha",
-    role: "Adventure Seeker",
-    avatar: reviewer5,
-    text: "MriyaTrip gives me a convenient place to collect my travel plans and keep track of the destinations I want to explore.",
   },
 ];
 
