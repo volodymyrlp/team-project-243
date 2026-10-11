@@ -11,6 +11,38 @@ const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
 
 const ALLOWED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
+type TripFilter = "all" | "favorites";
+
+const getFavoriteStorageKey = (userId: string) =>
+  `mriyaTrip_favoriteTrips_${userId}`;
+
+const loadFavoriteTripIds = (userId: string): string[] => {
+  try {
+    const savedFavorites = localStorage.getItem(getFavoriteStorageKey(userId));
+
+    if (!savedFavorites) {
+      return [];
+    }
+
+    const parsed: unknown = JSON.parse(savedFavorites);
+
+    return Array.isArray(parsed) && parsed.every((id) => typeof id === "string")
+      ? parsed
+      : [];
+  } catch (error) {
+    console.error("Failed to load favorite trips", error);
+    return [];
+  }
+};
+
+const saveFavoriteTripIds = (userId: string, ids: string[]) => {
+  try {
+    localStorage.setItem(getFavoriteStorageKey(userId), JSON.stringify(ids));
+  } catch (error) {
+    console.error("Failed to save favorite trips", error);
+  }
+};
+
 export const ProfilePage = () => {
   const navigate = useNavigate();
   const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -21,6 +53,15 @@ export const ProfilePage = () => {
   const [isTripsLoading, setIsTripsLoading] = useState(true);
   const [tripsError, setTripsError] = useState("");
   const [deletingTripId, setDeletingTripId] = useState<string | null>(null);
+
+  const [favoritesByUser, setFavoritesByUser] = useState<
+    Record<string, string[]>
+  >({});
+  const [tripFilter, setTripFilter] = useState<TripFilter>("all");
+
+  const favoriteTripIds = profile?.userId
+    ? (favoritesByUser[profile.userId] ?? [])
+    : [];
 
   const [editData, setEditData] = useState<UserUpdateRequest>({
     fullName: "",
@@ -64,7 +105,7 @@ export const ProfilePage = () => {
 
       const API_URL = import.meta.env.VITE_API_URL;
 
-      const fetchProfileAttempt = async () => {
+      const fetchProfileAttempt = async (): Promise<UserProfile | null> => {
         const response = await fetch(`${API_URL}/api/v1/users/me`, {
           method: "GET",
           headers: {
@@ -75,7 +116,6 @@ export const ProfilePage = () => {
         if (response.status === 401 || response.status === 403) {
           localStorage.removeItem("token");
           navigate("/login");
-
           return null;
         }
 
@@ -85,13 +125,29 @@ export const ProfilePage = () => {
           );
         }
 
-        const data: UserProfile = await response.json();
-
-        return data;
+        return (await response.json()) as UserProfile;
       };
 
+      const applyProfile = (data: UserProfile) => {
+        setProfile(data);
+
+        setEditData({
+          fullName: data.fullName,
+          avatarUrl: null,
+        });
+
+        const savedFavorites = loadFavoriteTripIds(data.userId);
+
+        setFavoritesByUser((previous) => ({
+          ...previous,
+          [data.userId]: savedFavorites,
+        }));
+      };
+
+      let wakingTimer: ReturnType<typeof setTimeout> | undefined;
+
       try {
-        const wakingTimer = setTimeout(() => {
+        wakingTimer = setTimeout(() => {
           if (isMounted) {
             setIsServerWaking(true);
           }
@@ -100,22 +156,19 @@ export const ProfilePage = () => {
         try {
           const data = await fetchProfileAttempt();
 
-          clearTimeout(wakingTimer);
+          if (wakingTimer) {
+            clearTimeout(wakingTimer);
+          }
 
           if (!isMounted || !data) {
             return;
           }
 
-          setProfile(data);
-
-          setEditData({
-            fullName: data.fullName,
-            avatarUrl: null,
-          });
-
-          return;
+          applyProfile(data);
         } catch (firstError) {
-          clearTimeout(wakingTimer);
+          if (wakingTimer) {
+            clearTimeout(wakingTimer);
+          }
 
           console.error("Profile load failed", firstError);
 
@@ -132,13 +185,7 @@ export const ProfilePage = () => {
               return;
             }
 
-            setProfile(data);
-
-            setEditData({
-              fullName: data.fullName,
-              avatarUrl: null,
-            });
-
+            applyProfile(data);
             setError("");
           } catch (secondError) {
             console.error("Profile load retry failed", secondError);
@@ -151,6 +198,10 @@ export const ProfilePage = () => {
           }
         }
       } finally {
+        if (wakingTimer) {
+          clearTimeout(wakingTimer);
+        }
+
         if (isMounted) {
           setIsServerWaking(false);
           setIsLoading(false);
@@ -158,7 +209,7 @@ export const ProfilePage = () => {
       }
     };
 
-    fetchProfile();
+    void fetchProfile();
 
     return () => {
       isMounted = false;
@@ -192,7 +243,6 @@ export const ProfilePage = () => {
         if (response.status === 401 || response.status === 403) {
           localStorage.removeItem("token");
           navigate("/login");
-
           return;
         }
 
@@ -208,8 +258,8 @@ export const ProfilePage = () => {
 
         setTrips(data.content);
         setTripsError("");
-      } catch (e) {
-        console.error("Trips load failed", e);
+      } catch (fetchError) {
+        console.error("Trips load failed", fetchError);
 
         if (isMounted) {
           setTripsError("We couldn't load your trips. Please try again later.");
@@ -221,12 +271,31 @@ export const ProfilePage = () => {
       }
     };
 
-    fetchTrips();
+    void fetchTrips();
 
     return () => {
       isMounted = false;
     };
   }, [navigate]);
+
+  const handleToggleFavorite = (tripId: string) => {
+    if (!profile?.userId) {
+      return;
+    }
+
+    const userId = profile.userId;
+
+    const nextIds = favoriteTripIds.includes(tripId)
+      ? favoriteTripIds.filter((id) => id !== tripId)
+      : [...favoriteTripIds, tripId];
+
+    saveFavoriteTripIds(userId, nextIds);
+
+    setFavoritesByUser((previous) => ({
+      ...previous,
+      [userId]: nextIds,
+    }));
+  };
 
   const handleDeleteTrip = async (tripId: string, tripTitle: string) => {
     const shouldDelete = window.confirm(
@@ -259,7 +328,6 @@ export const ProfilePage = () => {
       if (response.status === 401 || response.status === 403) {
         localStorage.removeItem("token");
         navigate("/login");
-
         return;
       }
 
@@ -267,11 +335,23 @@ export const ProfilePage = () => {
         throw new Error(`Failed to delete trip. Status: ${response.status}`);
       }
 
-      setTrips((prevTrips) =>
-        prevTrips.filter((trip) => trip.tripId !== tripId),
+      setTrips((previousTrips) =>
+        previousTrips.filter((trip) => trip.tripId !== tripId),
       );
-    } catch (e) {
-      console.error("Trip deletion failed", e);
+
+      if (profile?.userId) {
+        const userId = profile.userId;
+        const nextIds = favoriteTripIds.filter((id) => id !== tripId);
+
+        saveFavoriteTripIds(userId, nextIds);
+
+        setFavoritesByUser((previous) => ({
+          ...previous,
+          [userId]: nextIds,
+        }));
+      }
+    } catch (deleteError) {
+      console.error("Trip deletion failed", deleteError);
 
       setTripsError("We couldn't delete this trip. Please try again later.");
     } finally {
@@ -280,8 +360,8 @@ export const ProfilePage = () => {
   };
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
-    setEditData((prev) => ({
-      ...prev,
+    setEditData((previousData) => ({
+      ...previousData,
       [event.target.name]: event.target.value,
     }));
   };
@@ -438,7 +518,6 @@ export const ProfilePage = () => {
       if (response.status === 401 || response.status === 403) {
         localStorage.removeItem("token");
         navigate("/login");
-
         return;
       }
 
@@ -463,8 +542,8 @@ export const ProfilePage = () => {
       }
 
       setIsEditing(false);
-    } catch (e) {
-      console.error("Profile update failed", e);
+    } catch (saveError) {
+      console.error("Profile update failed", saveError);
       setError(
         "We couldn't save your profile or upload the photo. Please try again.",
       );
@@ -477,7 +556,6 @@ export const ProfilePage = () => {
     return (
       <main className='profile-page'>
         <Header />
-
         <section className='profile-page__content'>
           <div className='profile-page__loading'>
             <div className='profile-page__loading-spinner' />
@@ -497,7 +575,6 @@ export const ProfilePage = () => {
     return (
       <main className='profile-page'>
         <Header />
-
         <section className='profile-page__content'>
           <div className='profile-page__error'>
             <div className='profile-page__error-icon'>!</div>
@@ -516,8 +593,23 @@ export const ProfilePage = () => {
   }
 
   const avatarLetter = profile.fullName.charAt(0).toUpperCase();
-
   const displayedAvatarUrl = avatarPreviewUrl ?? profile.avatarUrl;
+
+  const sortedTrips = [...trips].sort((tripA, tripB) => {
+    const aIsFavorite = favoriteTripIds.includes(tripA.tripId);
+    const bIsFavorite = favoriteTripIds.includes(tripB.tripId);
+
+    if (aIsFavorite === bIsFavorite) {
+      return 0;
+    }
+
+    return aIsFavorite ? -1 : 1;
+  });
+
+  const displayedTrips =
+    tripFilter === "favorites"
+      ? sortedTrips.filter((trip) => favoriteTripIds.includes(trip.tripId))
+      : sortedTrips;
 
   return (
     <main className='profile-page'>
@@ -573,7 +665,6 @@ export const ProfilePage = () => {
 
             <div className='profile-card__user'>
               <h2>{profile.fullName}</h2>
-
               <p>{profile.email}</p>
             </div>
 
@@ -671,6 +762,40 @@ export const ProfilePage = () => {
             </Link>
           </div>
 
+          {!isTripsLoading && !tripsError && trips.length > 0 && (
+            <div className='profile-trips__filters'>
+              <button
+                type='button'
+                className={`profile-trips__filter ${
+                  tripFilter === "all" ? "profile-trips__filter--active" : ""
+                }`}
+                onClick={() => setTripFilter("all")}
+                aria-pressed={tripFilter === "all"}
+              >
+                All trips ({trips.length})
+              </button>
+
+              <button
+                type='button'
+                className={`profile-trips__filter ${
+                  tripFilter === "favorites"
+                    ? "profile-trips__filter--active"
+                    : ""
+                }`}
+                onClick={() => setTripFilter("favorites")}
+                aria-pressed={tripFilter === "favorites"}
+              >
+                <span aria-hidden='true'>♥</span> Favorites (
+                {
+                  favoriteTripIds.filter((id) =>
+                    trips.some((trip) => trip.tripId === id),
+                  ).length
+                }
+                )
+              </button>
+            </div>
+          )}
+
           {isTripsLoading ? (
             <div className='profile-trips__loading'>
               <p>Loading your trips...</p>
@@ -697,69 +822,113 @@ export const ProfilePage = () => {
                 Create your first trip
               </Link>
             </div>
+          ) : displayedTrips.length === 0 ? (
+            <div className='profile-trips__empty'>
+              <div className='profile-trips__empty-icon'>♥</div>
+
+              <h3>No favorite trips yet</h3>
+
+              <p>
+                Select the heart on a trip card to add that trip to your
+                favorites.
+              </p>
+
+              <button
+                type='button'
+                className='profile-trips__create-button'
+                onClick={() => setTripFilter("all")}
+              >
+                Show all trips
+              </button>
+            </div>
           ) : (
             <div className='profile-trips__grid'>
-              {trips.map((trip) => (
-                <div
-                  className='trip-card'
-                  key={trip.tripId}
-                >
-                  <div className='trip-card__cover'>
-                    {trip.coverUrl ? (
-                      <img
-                        src={`${import.meta.env.VITE_API_URL}${trip.coverUrl}`}
-                        alt={`${trip.title} cover`}
-                      />
-                    ) : (
-                      <div className='trip-card__cover-placeholder'>✈</div>
-                    )}
-                  </div>
+              {displayedTrips.map((trip) => {
+                const isFavorite = favoriteTripIds.includes(trip.tripId);
 
-                  <div className='trip-card__body'>
-                    <div className='trip-card__content'>
-                      <div className='trip-card__details'>
-                        <h3>{trip.title}</h3>
+                return (
+                  <div
+                    className='trip-card'
+                    key={trip.tripId}
+                  >
+                    <div className='trip-card__cover'>
+                      {trip.coverUrl ? (
+                        <img
+                          src={`${import.meta.env.VITE_API_URL}${trip.coverUrl}`}
+                          alt={`${trip.title} cover`}
+                        />
+                      ) : (
+                        <div className='trip-card__cover-placeholder'>✈</div>
+                      )}
 
-                        <p className='trip-card__destination'>
-                          {trip.destination}
-                        </p>
+                      <button
+                        type='button'
+                        className={`trip-card__favorite ${
+                          isFavorite ? "trip-card__favorite--active" : ""
+                        }`}
+                        onClick={() => handleToggleFavorite(trip.tripId)}
+                        aria-label={
+                          isFavorite
+                            ? `Remove ${trip.title} from favorites`
+                            : `Add ${trip.title} to favorites`
+                        }
+                        aria-pressed={isFavorite}
+                        title={
+                          isFavorite
+                            ? "Remove from favorites"
+                            : "Add to favorites"
+                        }
+                      >
+                        {isFavorite ? "♥" : "♡"}
+                      </button>
+                    </div>
 
-                        <span
-                          className={`trip-card__status ${
-                            trip.isPublic
-                              ? "trip-card__status--public"
-                              : "trip-card__status--private"
-                          }`}
-                        >
-                          {trip.isPublic ? "Public" : "Private"}
-                        </span>
-                      </div>
+                    <div className='trip-card__body'>
+                      <div className='trip-card__content'>
+                        <div className='trip-card__details'>
+                          <h3>{trip.title}</h3>
 
-                      <div className='trip-card__actions'>
-                        <Link
-                          to={`/trips/${trip.tripId}/itinerary`}
-                          className='trip-card__button'
-                        >
-                          View trip
-                        </Link>
+                          <p className='trip-card__destination'>
+                            {trip.destination}
+                          </p>
 
-                        <button
-                          type='button'
-                          className='trip-card__delete'
-                          onClick={() =>
-                            handleDeleteTrip(trip.tripId, trip.title)
-                          }
-                          disabled={deletingTripId === trip.tripId}
-                        >
-                          {deletingTripId === trip.tripId
-                            ? "Deleting..."
-                            : "Delete"}
-                        </button>
+                          <span
+                            className={`trip-card__status ${
+                              trip.isPublic
+                                ? "trip-card__status--public"
+                                : "trip-card__status--private"
+                            }`}
+                          >
+                            {trip.isPublic ? "Public" : "Private"}
+                          </span>
+                        </div>
+
+                        <div className='trip-card__actions'>
+                          <Link
+                            to={`/trips/${trip.tripId}/itinerary`}
+                            className='trip-card__button'
+                          >
+                            View trip
+                          </Link>
+
+                          <button
+                            type='button'
+                            className='trip-card__delete'
+                            onClick={() =>
+                              handleDeleteTrip(trip.tripId, trip.title)
+                            }
+                            disabled={deletingTripId === trip.tripId}
+                          >
+                            {deletingTripId === trip.tripId
+                              ? "Deleting..."
+                              : "Delete"}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </section>

@@ -166,17 +166,20 @@
 
     &__user {
       flex: 1;
+      min-width: 0;
     }
 
     &__user h2 {
       margin: 0 0 5px;
       font-size: 22px;
+      overflow-wrap: anywhere;
     }
 
     &__user p {
       margin: 0;
       color: #64748b;
       font-size: 14px;
+      overflow-wrap: anywhere;
     }
 
     &__edit-button {
@@ -196,6 +199,11 @@
       &:hover {
         background: $primary;
         color: white;
+      }
+
+      &:focus-visible {
+        outline: 3px solid rgb(37 99 235 / 30%);
+        outline-offset: 3px;
       }
     }
 
@@ -260,6 +268,11 @@
         border-color: $primary;
       }
 
+      &:focus-visible {
+        outline: 2px solid rgb(37 99 235 / 25%);
+        outline-offset: 2px;
+      }
+
       &:disabled {
         opacity: 1;
         color: #334155;
@@ -308,6 +321,11 @@
         opacity: 0.6;
         cursor: default;
       }
+
+      &:focus-visible {
+        outline: 3px solid rgb(37 99 235 / 30%);
+        outline-offset: 3px;
+      }
     }
 
     &__save {
@@ -323,6 +341,11 @@
       &:disabled {
         opacity: 0.6;
         cursor: default;
+      }
+
+      &:focus-visible {
+        outline: 3px solid rgb(37 99 235 / 30%);
+        outline-offset: 3px;
       }
     }
   }
@@ -377,6 +400,61 @@
       &:hover {
         transform: translateY(-2px);
         box-shadow: 0 12px 22px rgb(2 132 199 / 22%);
+      }
+
+      &:focus-visible {
+        outline: 3px solid rgb(37 99 235 / 30%);
+        outline-offset: 3px;
+      }
+    }
+
+    &__filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    &__filter {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      min-height: 40px;
+      padding: 0 16px;
+      border: 1px solid rgb(2 132 199 / 20%);
+      border-radius: 999px;
+      background: $surface;
+      color: #475569;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition:
+        background 0.2s ease,
+        color 0.2s ease,
+        border-color 0.2s ease;
+
+      &:hover {
+        border-color: $primary;
+        color: $primary;
+      }
+
+      &--active {
+        border-color: $primary;
+        background: $primary;
+        color: white;
+
+        &:hover {
+          border-color: #1d4ed8;
+          background: #1d4ed8;
+          color: white;
+        }
+      }
+
+      &:focus-visible {
+        outline: 3px solid rgb(37 99 235 / 30%);
+        outline-offset: 3px;
       }
     }
 
@@ -476,6 +554,48 @@
 
     &:hover &__cover img {
       transform: scale(1.03);
+    }
+
+    &__favorite {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 42px;
+      height: 42px;
+      padding: 0;
+      border: 1px solid rgb(255 255 255 / 75%);
+      border-radius: 50%;
+      background: rgb(255 255 255 / 92%);
+      color: #64748b;
+      font-family: inherit;
+      font-size: 25px;
+      line-height: 1;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgb(15 23 42 / 15%);
+      transition:
+        transform 0.2s ease,
+        background 0.2s ease,
+        color 0.2s ease,
+        border-color 0.2s ease;
+
+      &:hover {
+        transform: scale(1.08);
+      }
+
+      &--active {
+        border-color: #fecdd3;
+        background: #fff1f2;
+        color: #e11d48;
+      }
+
+      &:focus-visible {
+        outline: 3px solid $primary;
+        outline-offset: 3px;
+      }
     }
 
     &__cover-placeholder {
@@ -591,6 +711,11 @@
         background: $primary;
         color: white;
       }
+
+      &:focus-visible {
+        outline: 3px solid rgb(37 99 235 / 30%);
+        outline-offset: 3px;
+      }
     }
 
     &__delete {
@@ -620,6 +745,11 @@
       &:disabled {
         opacity: 0.6;
         cursor: default;
+      }
+
+      &:focus-visible {
+        outline: 3px solid rgb(239 68 68 / 25%);
+        outline-offset: 3px;
       }
     }
   }
@@ -683,6 +813,11 @@
 
     &:hover {
       transform: translateY(-2px);
+    }
+
+    &:focus-visible {
+      outline: 3px solid white;
+      outline-offset: 3px;
     }
   }
 
@@ -758,7 +893,7 @@
       align-items: flex-start;
       flex-direction: column;
 
-      & > div {
+      > div {
         align-items: flex-start;
       }
 
@@ -820,6 +955,16 @@
       &__heading h2 {
         font-size: 25px;
       }
+
+      &__filters {
+        gap: 8px;
+      }
+
+      &__filter {
+        min-height: 38px;
+        padding: 0 13px;
+        font-size: 12px;
+      }
     }
 
     .trip-card {
@@ -829,6 +974,13 @@
 
       &__body {
         padding: 18px;
+      }
+
+      &__favorite {
+        top: 10px;
+        right: 10px;
+        width: 40px;
+        height: 40px;
       }
     }
 
