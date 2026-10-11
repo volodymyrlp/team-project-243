@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import logo from "../assets/images/logo.png";
+import logo from "../assets/images/logo.webp";
 import "./Header.scss";
 
 export const Header = () => {

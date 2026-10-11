@@ -1,16 +1,29 @@
 import { Link } from "react-router-dom";
-import logo from "../../assets/images/logo.png";
+import { Header } from "../../components/Header";
+import { WorldMap } from "../../components/WorldMap/WorldMap";
+import type { Country } from "../../types/Country";
 
-import spain from "../../assets/images/SpainImage.jpg";
-import italy from "../../assets/images/ItalyImage.jpg";
-import germany from "../../assets/images/GermanyImage.jpg";
-import austria from "../../assets/images/AustriaImage.jpg";
-import france from "../../assets/images/FranceImage.jpg";
+import logo from "../../assets/images/logo.webp";
+
+import spain from "../../assets/images/SpainImage.webp";
+import italy from "../../assets/images/ItalyImage.webp";
+import germany from "../../assets/images/GermanyImage.webp";
+import austria from "../../assets/images/AustriaImage.webp";
+import france from "../../assets/images/FranceImage.webp";
+
+import airbnbLogo from "../../assets/images/Airbnb.webp";
+import bookingLogo from "../../assets/images/booking.svg";
+import mastercardLogo from "../../assets/images/Mastercard.svg";
+import ryanairLogo from "../../assets/images/Ryanair.webp";
+import visaLogo from "../../assets/images/Visa.webp";
+import wizzairLogo from "../../assets/images/wizzair.webp";
+
+import reviewer1 from "../../assets/images/1.webp";
+import reviewer2 from "../../assets/images/2.webp";
+import reviewer3 from "../../assets/images/3.webp";
+import reviewer4 from "../../assets/images/4.webp";
 
 import "./MainPage.scss";
-import { Header } from "../../components/Header";
-import type { Country } from "../../types/Country";
-import { WorldMap } from "../../components/WorldMap/WorldMap";
 
 const countries: Country[] = [
   {
@@ -55,14 +68,47 @@ const countries: Country[] = [
   },
 ];
 
+const reviews = [
+  {
+    id: 1,
+    name: "Maksym",
+    role: "Travel Blogger",
+    avatar: reviewer1,
+    text: "Planning a trip became so simple when all the interesting places are instantly visible on the map. Definitely bringing this on all my future travels!",
+  },
+  {
+    id: 2,
+    name: "Kateryna",
+    role: "Traveler",
+    avatar: reviewer2,
+    text: "I used to put everything into Excel sheets and print out tons of paper. MriyaTrip helps me keep my travel plans organized in one place.",
+  },
+  {
+    id: 3,
+    name: "Andrii",
+    role: "Travel Enthusiast",
+    avatar: reviewer3,
+    text: "Having all my destinations in one place makes planning a trip much easier. I can organize my ideas before setting off on an adventure.",
+  },
+  {
+    id: 4,
+    name: "Anna",
+    role: "Frequent Traveler",
+    avatar: reviewer4,
+    text: "I love having a clear overview of the places I want to visit. It makes preparing for a new journey feel much more organized.",
+  },
+];
+
 export const MainPage = () => {
-  const token = localStorage.getItem("token");
-  const isAuthenticated = Boolean(token);
+  const isAuthenticated = Boolean(localStorage.getItem("token"));
+  const ctaLink = isAuthenticated ? "/trips/create" : "/registration";
 
   return (
     <main className='main-before-auth'>
       <section className='main-before-auth__hero'>
-        <Header />
+        <div className='main-before-auth__header'>
+          <Header />
+        </div>
 
         <div className='main-before-auth__hero-content'>
           <span className='main-before-auth__eyebrow'>
@@ -84,7 +130,7 @@ export const MainPage = () => {
           </p>
 
           <Link
-            to={isAuthenticated ? "/trips/create" : "/registration"}
+            to={ctaLink}
             className='main-before-auth__cta-button'
           >
             {isAuthenticated ? "Create your trip" : "Start planning"}
@@ -115,8 +161,9 @@ export const MainPage = () => {
               <div className='country-card__image-wrapper'>
                 <img
                   src={country.image}
-                  alt={country.name}
+                  alt={`${country.name} destination`}
                   className='country-card__image'
+                  loading='lazy'
                 />
 
                 <span className='country-card__rank'>#{index + 1}</span>
@@ -124,7 +171,7 @@ export const MainPage = () => {
 
               <div className='country-card__content'>
                 <h3>
-                  <span>{country.flag}</span>
+                  <span aria-hidden='true'>{country.flag}</span>
                   {country.name}
                 </h3>
 
@@ -137,11 +184,13 @@ export const MainPage = () => {
         </div>
       </section>
 
-      <WorldMap />
+      <section className='main-before-auth__map-section'>
+        <WorldMap />
+      </section>
 
       <section className='main-before-auth__how-it-works'>
-        <div className='main-before-auth__how-heading'>
-          <span>HOW IT WORKS</span>
+        <div className='main-before-auth__section-heading'>
+          <span className='main-before-auth__section-label'>HOW IT WORKS</span>
 
           <h2>Start planning your next adventure</h2>
 
@@ -153,7 +202,12 @@ export const MainPage = () => {
 
         <div className='main-before-auth__steps'>
           <article className='main-before-auth__step'>
-            <div className='main-before-auth__step-icon'>👤</div>
+            <div
+              className='main-before-auth__step-icon'
+              aria-hidden='true'
+            >
+              👤
+            </div>
 
             <span className='main-before-auth__step-number'>01</span>
 
@@ -166,7 +220,12 @@ export const MainPage = () => {
           </article>
 
           <article className='main-before-auth__step'>
-            <div className='main-before-auth__step-icon'>📍</div>
+            <div
+              className='main-before-auth__step-icon'
+              aria-hidden='true'
+            >
+              📍
+            </div>
 
             <span className='main-before-auth__step-number'>02</span>
 
@@ -179,11 +238,16 @@ export const MainPage = () => {
           </article>
 
           <article className='main-before-auth__step'>
-            <div className='main-before-auth__step-icon'>🌍</div>
+            <div
+              className='main-before-auth__step-icon'
+              aria-hidden='true'
+            >
+              🌍
+            </div>
 
             <span className='main-before-auth__step-number'>03</span>
 
-            <h3>Plan & explore</h3>
+            <h3>Plan &amp; explore</h3>
 
             <p>
               Keep your trips organized and see your destinations on your
@@ -193,11 +257,112 @@ export const MainPage = () => {
         </div>
 
         <Link
-          to={isAuthenticated ? "/trips/create" : "/registration"}
+          to={ctaLink}
           className='main-before-auth__how-button'
         >
           {isAuthenticated ? "Create your trip" : "Create an account"}
         </Link>
+      </section>
+
+      <section className='main-before-auth__partners'>
+        <div className='main-before-auth__section-heading'>
+          <span className='main-before-auth__section-label'>
+            TRAVEL RESOURCES
+          </span>
+
+          <h2>Everything you need for your next adventure</h2>
+
+          <p>
+            Discover services that can help you find accommodation, book
+            flights, and prepare for your journey.
+          </p>
+        </div>
+
+        <div className='partners-grid'>
+          <a
+            className='partner-card'
+            href='https://www.airbnb.com/'
+            target='_blank'
+            rel='noopener noreferrer'
+            aria-label='Visit Airbnb (opens in a new tab)'
+          >
+            <img
+              src={airbnbLogo}
+              alt='Airbnb'
+              loading='lazy'
+            />
+          </a>
+
+          <a
+            className='partner-card'
+            href='https://www.booking.com/'
+            target='_blank'
+            rel='noopener noreferrer'
+            aria-label='Visit Booking.com (opens in a new tab)'
+          >
+            <img
+              src={bookingLogo}
+              alt='Booking.com'
+              loading='lazy'
+            />
+          </a>
+
+          <a
+            className='partner-card'
+            href='https://www.ryanair.com/'
+            target='_blank'
+            rel='noopener noreferrer'
+            aria-label='Visit Ryanair (opens in a new tab)'
+          >
+            <img
+              src={ryanairLogo}
+              alt='Ryanair'
+              loading='lazy'
+            />
+          </a>
+
+          <a
+            className='partner-card'
+            href='https://wizzair.com/'
+            target='_blank'
+            rel='noopener noreferrer'
+            aria-label='Visit Wizz Air (opens in a new tab)'
+          >
+            <img
+              src={wizzairLogo}
+              alt='Wizz Air'
+              loading='lazy'
+            />
+          </a>
+
+          <a
+            className='partner-card'
+            href='https://www.mastercard.com/'
+            target='_blank'
+            rel='noopener noreferrer'
+            aria-label='Visit Mastercard (opens in a new tab)'
+          >
+            <img
+              src={mastercardLogo}
+              alt='Mastercard'
+              loading='lazy'
+            />
+          </a>
+
+          <a
+            className='partner-card'
+            href='https://www.visa.com/'
+            target='_blank'
+            rel='noopener noreferrer'
+            aria-label='Visit Visa (opens in a new tab)'
+          >
+            <img
+              src={visaLogo}
+              alt='Visa'
+              loading='lazy'
+            />
+          </a>
+        </div>
       </section>
 
       <section className='main-before-auth__reviews'>
@@ -209,49 +374,42 @@ export const MainPage = () => {
           <h2>What travelers say about MriyaTrip</h2>
 
           <p>
-            Thousands of people have already tried the service and fallen in
-            love with effortless travel planning.
+            Discover how MriyaTrip helps travelers organize their journeys and
+            plan their next adventures.
           </p>
         </div>
 
         <div className='main-before-auth__reviews-grid'>
-          <article className='review-card'>
-            <div className='review-card__stars'>★★★★★</div>
-
-            <blockquote>
-              "Planning a trip became so simple when all the interesting places
-              are instantly visible on the map. Definitely bringing this on all
-              my future travels!"
-            </blockquote>
-
-            <div className='review-card__author'>
-              <div className='review-card__avatar'>K</div>
-
-              <div>
-                <strong>Kateryna</strong>
-                <span>Travel Blogger</span>
+          {reviews.map((review) => (
+            <article
+              className='review-card'
+              key={review.id}
+            >
+              <div
+                className='review-card__stars'
+                role='img'
+                aria-label='5 out of 5 stars'
+              >
+                ★★★★★
               </div>
-            </div>
-          </article>
 
-          <article className='review-card'>
-            <div className='review-card__stars'>★★★★★</div>
+              <blockquote>{review.text}</blockquote>
 
-            <blockquote>
-              "I used to put everything into Excel sheets and print out tons of
-              paper. MriyaTrip completely changed my approach: maps, bookings,
-              expenses — everything is in one phone."
-            </blockquote>
+              <div className='review-card__author'>
+                <img
+                  src={review.avatar}
+                  alt=''
+                  className='review-card__avatar'
+                  loading='lazy'
+                />
 
-            <div className='review-card__author'>
-              <div className='review-card__avatar'>M</div>
-
-              <div>
-                <strong>Maksym M.</strong>
-                <span>Traveler</span>
+                <div className='review-card__author-details'>
+                  <strong>{review.name}</strong>
+                  <span>{review.role}</span>
+                </div>
               </div>
-            </div>
-          </article>
+            </article>
+          ))}
         </div>
       </section>
 
@@ -264,15 +422,15 @@ export const MainPage = () => {
           <h2>Time to turn dreams into reality</h2>
 
           <p>
-            Create your first itinerary in a few minutes and head out toward
-            new emotions.
+            Create your first itinerary in a few minutes and head out toward new
+            emotions.
           </p>
 
           <Link
-            to={isAuthenticated ? "/trips/create" : "/registration"}
+            to={ctaLink}
             className='main-before-auth__cta-button main-before-auth__cta-button--light'
           >
-            Create your first trip
+            {isAuthenticated ? "Create your first trip" : "Start your journey"}
           </Link>
         </div>
       </section>
@@ -281,8 +439,9 @@ export const MainPage = () => {
         <div className='main-before-auth__footer-brand'>
           <img
             src={logo}
-            alt='MriyaTrip'
+            alt=''
             className='main-before-auth__footer-logo'
+            loading='lazy'
           />
 
           <span>MriyaTrip</span>
@@ -291,7 +450,7 @@ export const MainPage = () => {
         <p>Plan less. Travel more.</p>
 
         <span className='main-before-auth__copyright'>
-          © 2026 MriyaTrip. All rights reserved.
+          © {new Date().getFullYear()} MriyaTrip. All rights reserved.
         </span>
       </footer>
     </main>
