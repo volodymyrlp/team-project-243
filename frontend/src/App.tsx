@@ -31,10 +31,6 @@ function App() {
           path='/registration'
           element={<RegistrationPage />}
         />
-        <Route
-          path='/inspiration'
-          element={<TravelInspirationPage />}
-        />
 
         {/* Protected routes */}
 
@@ -50,6 +46,10 @@ function App() {
           <Route
             path='/trips/:tripId/itinerary'
             element={<ItineraryBuilderPage />}
+          />
+          <Route
+            path='/inspiration'
+            element={<TravelInspirationPage />}
           />
         </Route>
         <Route

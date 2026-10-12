@@ -39,30 +39,32 @@ export const Header = () => {
   }, [isMenuOpen]);
 
   return (
-    <header className="header">
+    <header className='header'>
       <Link
-        to="/"
-        className="header__brand"
+        to='/'
+        className='header__brand'
         onClick={closeMenu}
       >
         <img
           src={logo}
-          alt="MriyaTrip"
-          className="header__logo"
+          alt='MriyaTrip'
+          className='header__logo'
         />
 
-        <span className="header__brand-name">MriyaTrip</span>
+        <span className='header__brand-name'>MriyaTrip</span>
       </Link>
 
       <button
-        type="button"
+        type='button'
         className={`header__menu-toggle ${
           isMenuOpen ? "header__menu-toggle--open" : ""
         }`}
         onClick={() => setIsMenuOpen((prev) => !prev)}
-        aria-label={isMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+        aria-label={
+          isMenuOpen ? "Close navigation menu" : "Open navigation menu"
+        }
         aria-expanded={isMenuOpen}
-        aria-controls="header-navigation"
+        aria-controls='header-navigation'
       >
         <span />
         <span />
@@ -70,33 +72,39 @@ export const Header = () => {
       </button>
 
       <nav
-        id="header-navigation"
-        className={`header__nav ${
-          isMenuOpen ? "header__nav--open" : ""
-        }`}
-        aria-label="Main navigation"
+        id='header-navigation'
+        className={`header__nav ${isMenuOpen ? "header__nav--open" : ""}`}
+        aria-label='Main navigation'
       >
+        <Link
+          to='/inspiration'
+          className='header__create-trip'
+          onClick={closeMenu}
+        >
+          Travel Inspiration
+        </Link>
+
         {isAuthenticated ? (
           <>
             <Link
-              to="/trips/create"
-              className="header__create-trip"
+              to='/trips/create'
+              className='header__create-trip'
               onClick={closeMenu}
             >
               Create trip
             </Link>
 
             <Link
-              to="/profile"
-              className="header__profile"
+              to='/profile'
+              className='header__profile'
               onClick={closeMenu}
             >
               Profile
             </Link>
 
             <button
-              type="button"
-              className="header__logout"
+              type='button'
+              className='header__logout'
               onClick={handleLogout}
             >
               Log out
@@ -105,15 +113,15 @@ export const Header = () => {
         ) : (
           <>
             <Link
-              to="/login"
+              to='/login'
               onClick={closeMenu}
             >
               Log in
             </Link>
 
             <Link
-              to="/registration"
-              className="header__nav-button"
+              to='/registration'
+              className='header__nav-button'
               onClick={closeMenu}
             >
               Sign up
