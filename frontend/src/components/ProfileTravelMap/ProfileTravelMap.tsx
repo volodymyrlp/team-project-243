@@ -1,14 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  CircleMarker,
-  MapContainer,
-  Popup,
-  TileLayer,
-  useMap,
-} from "react-leaflet";
+import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
+import L from "leaflet";
 import type { LatLngBoundsExpression } from "leaflet";
 import type { TripResponse } from "../../types/TripResponse";
 
+import "leaflet/dist/leaflet.css";
 import "./ProfileTravelMap.scss";
 
 interface ProfileTravelMapProps {
@@ -40,6 +36,21 @@ interface Destination {
 
 const DEFAULT_CENTER: [number, number] = [20, 0];
 const DEFAULT_ZOOM = 2;
+
+// Та сама іконка маркера, що й у WorldMap.
+const markerIcon = L.icon({
+  iconUrl: new URL("leaflet/dist/images/marker-icon.png", import.meta.url).href,
+  iconRetinaUrl: new URL(
+    "leaflet/dist/images/marker-icon-2x.png",
+    import.meta.url,
+  ).href,
+  shadowUrl: new URL("leaflet/dist/images/marker-shadow.png", import.meta.url)
+    .href,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
 
 const normalizeDestination = (destination: string) =>
   destination.trim().toLocaleLowerCase();
@@ -299,15 +310,10 @@ export default function ProfileTravelMap({
           <FitMapToMarkers coordinates={markerCoordinates} />
 
           {markers.map(({ trip, coordinates, key }) => (
-            <CircleMarker
+            <Marker
               key={`${trip.tripId}-${key}`}
-              center={[coordinates.latitude, coordinates.longitude]}
-              radius={8}
-              pathOptions={{
-                color: "#1D4ED8",
-                fillColor: "#2563EB",
-                fillOpacity: 0.85,
-              }}
+              position={[coordinates.latitude, coordinates.longitude]}
+              icon={markerIcon}
             >
               <Popup>
                 <div className='profile-travel-map__popup'>
@@ -316,7 +322,7 @@ export default function ProfileTravelMap({
                   <a href={`/trips/${trip.tripId}/itinerary`}>View trip</a>
                 </div>
               </Popup>
-            </CircleMarker>
+            </Marker>
           ))}
         </MapContainer>
       </div>
