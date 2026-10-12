@@ -1,3 +1,9 @@
+body:has(.travel-inspiration) .header {
+  position: relative;
+  top: auto;
+  left: auto;
+}
+
 .travel-inspiration {
   width: 100%;
   color: #0f172a;
