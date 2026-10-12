@@ -1,22 +1,22 @@
-body:has(.travel-inspiration) .header {
-  position: relative;
-  top: auto;
-  left: auto;
-}
+@use "../../styles/variables" as *;
 
 .travel-inspiration {
   width: 100%;
-  color: #0f172a;
-  background: #ffffff;
 
   &__hero {
     position: relative;
     display: flex;
     align-items: center;
     min-height: 420px;
-    padding: 64px 8%;
+    padding: 120px 8% 64px;
     overflow: hidden;
-    background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 55%, #e0f2fe 100%);
+    background:
+      linear-gradient(
+        180deg,
+        rgb(2 132 199 / 20%) 0%,
+        rgb(2 132 199 / 5%) 100%
+      ),
+      $background;
   }
 
   &__hero-content {
@@ -599,8 +599,7 @@ body:has(.travel-inspiration) .header {
     }
 
     &__hero {
-      padding-right: 6%;
-      padding-left: 6%;
+      padding: 110px 6% 48px;
     }
   }
 }
@@ -609,7 +608,7 @@ body:has(.travel-inspiration) .header {
   .travel-inspiration {
     &__hero {
       min-height: 360px;
-      padding: 48px 22px;
+      padding: 100px 22px 40px;
     }
 
     &__hero-content > p {
