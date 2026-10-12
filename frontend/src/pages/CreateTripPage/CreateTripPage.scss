@@ -2,7 +2,7 @@
 
 .create-trip-page {
   min-height: 100vh;
-  padding: 120px 20px 70px;
+  padding: 100px 20px 70px;
   background: $background;
   color: $text-primary;
 }
@@ -234,7 +234,6 @@
 
       &:checked {
         border-color: $primary;
-
         background: $primary;
 
         &::after {
@@ -411,8 +410,6 @@
   }
 
   @media (width < 600px) {
-    padding: 100px 16px 50px;
-
     &__form {
       padding: 22px;
     }
@@ -435,6 +432,12 @@
     &__form {
       padding: 18px;
     }
+  }
+}
+
+@media (width < 600px) {
+  .create-trip-page {
+    padding: 68px 16px 50px;
   }
 }
 

@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
+import ScrollToTop from "./components/ScrollToTop";
 import { RegistrationPage } from "./pages/RegistrationPage/RegistrationPage";
 import { LoginPage } from "./pages/LoginPage/LoginPage";
 import { MainPage } from "./pages/MainPage/MainPage";
@@ -14,6 +15,8 @@ import { ItineraryBuilderPage } from "./pages/ItineraryBuilderPage/ItineraryBuil
 function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
+
       <Routes>
         <Route
           path='/'
