@@ -745,11 +745,6 @@ export const ProfilePage = () => {
           </form>
         </div>
 
-        <ProfileTravelMap
-          trips={trips}
-          isLoading={isTripsLoading}
-        />
-
         <section className='profile-trips'>
           <div className='profile-trips__heading'>
             <div>
@@ -938,6 +933,11 @@ export const ProfilePage = () => {
             </div>
           )}
         </section>
+
+        <ProfileTravelMap
+          trips={trips}
+          isLoading={isTripsLoading}
+        />
 
         <div className='profile-page__travel-card'>
           <div>
