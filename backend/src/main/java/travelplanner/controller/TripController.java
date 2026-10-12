@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.multipart.MultipartFile;
+import travelplanner.dto.trip.ImageKeyRequest;
 import travelplanner.dto.trip.PhotoResponse;
 import travelplanner.dto.trip.TripCreateRequest;
 import travelplanner.dto.trip.TripResponse;
@@ -74,23 +74,23 @@ public class TripController {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping(value = "/{tripId}/cover", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/{tripId}/cover")
     public ResponseEntity<TripResponse> updateTripCover(
             @PathVariable UUID tripId,
-            @RequestParam("file") MultipartFile file,
+            @RequestBody ImageKeyRequest request,
             @AuthenticationPrincipal User currentUser
     ) {
-        TripResponse response = tripService.updateTripCover(tripId, file, currentUser);
+        TripResponse response = tripService.updateTripCover(tripId, request.fileKey(), currentUser);
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping(value = "/{tripId}/photos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/{tripId}/photos")
     public ResponseEntity<PhotoResponse> uploadTripPhoto(
             @PathVariable UUID tripId,
-            @RequestParam("file") MultipartFile file,
+            @RequestBody ImageKeyRequest request,
             @AuthenticationPrincipal User currentUser
     ) {
-        PhotoResponse response = tripService.uploadTripPhoto(tripId, file, currentUser);
+        PhotoResponse response = tripService.uploadTripPhoto(tripId, request.fileKey(), currentUser);
         return ResponseEntity.ok(response);
     }
 
