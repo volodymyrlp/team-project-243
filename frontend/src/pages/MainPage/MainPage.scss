@@ -41,7 +41,7 @@
   &__eyebrow,
   &__section-label {
     display: inline-block;
-    margin-bottom: 18px;
+    margin-bottom: 14px;
     color: $primary;
     font-size: 12px;
     font-weight: 700;
@@ -49,7 +49,7 @@
   }
 
   &__hero-content h1 {
-    margin: 0 0 28px;
+    margin: 0 0 24px;
     font-size: clamp(42px, 7vw, 78px);
     line-height: 1.04;
     letter-spacing: -3px;
@@ -57,7 +57,7 @@
 
   &__hero-content p {
     width: min(700px, 100%);
-    margin: 0 auto 34px;
+    margin: 0 auto 28px;
     color: $text-secondary;
     font-size: 17px;
     line-height: 1.7;
@@ -103,11 +103,11 @@
 
   &__section-heading {
     width: min(700px, 90%);
-    margin: 0 auto 50px;
+    margin: 0 auto 32px;
     text-align: center;
 
     h2 {
-      margin: 0 0 16px;
+      margin: 0 0 12px;
       font-size: clamp(30px, 5vw, 48px);
       line-height: 1.1;
       letter-spacing: -1.5px;
@@ -122,13 +122,13 @@
   }
 
   &__countries {
-    padding: 100px 6%;
+    padding: 72px 6%;
   }
 
   &__countries-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 24px;
+    gap: 20px;
     width: min(1200px, 100%);
     margin: 0 auto;
   }
@@ -136,7 +136,7 @@
   .country-card {
     overflow: hidden;
     background: $surface;
-    border-radius: 24px;
+    border-radius: 18px;
     box-shadow: 0 15px 35px rgb(0 0 0 / 7%);
     transition:
       transform 0.25s ease,
@@ -193,7 +193,7 @@
     }
 
     &__content {
-      padding: 24px;
+      padding: 18px;
     }
 
     &__content h3 {
@@ -201,12 +201,12 @@
       align-items: center;
       gap: 9px;
       margin: 0 0 8px;
-      font-size: 23px;
+      font-size: 20px;
     }
 
     &__nights {
       display: inline-block;
-      margin-bottom: 14px;
+      margin-bottom: 12px;
       color: $primary;
       font-size: 13px;
       font-weight: 600;
@@ -221,12 +221,12 @@
   }
 
   &__map-section {
-    padding: 100px 6%;
+    padding: 64px 6%;
     background: $background;
   }
 
   &__how-it-works {
-    padding: 100px 6%;
+    padding: 72px 6%;
     background: $background;
     text-align: center;
   }
@@ -234,14 +234,14 @@
   &__steps {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 30px;
+    gap: 20px;
     width: min(1100px, 100%);
-    margin: 0 auto 50px;
+    margin: 0 auto 28px;
   }
 
   &__step {
     position: relative;
-    padding: 35px 30px;
+    padding: 24px 20px;
     background: $surface;
     border: 1px solid $border;
     border-radius: 20px;
@@ -262,7 +262,7 @@
     justify-content: center;
     width: 56px;
     height: 56px;
-    margin-bottom: 25px;
+    margin-bottom: 18px;
     border-radius: 16px;
     background: $input-background;
     font-size: 26px;
@@ -278,7 +278,7 @@
   }
 
   &__step h3 {
-    margin: 0 0 12px;
+    margin: 0 0 10px;
     color: $text-primary;
     font-size: 22px;
   }
@@ -318,14 +318,14 @@
   }
 
   &__partners {
-    padding: 100px 6%;
+    padding: 72px 6%;
     background: $background;
   }
 
   .partners-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 24px;
+    gap: 20px;
     width: min(1000px, 100%);
     margin: 0 auto;
   }
@@ -363,34 +363,34 @@
   }
 
   &__reviews {
-    padding: 100px 6%;
+    padding: 72px 6%;
     background: $surface;
   }
 
   &__reviews-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 24px;
+    gap: 20px;
     width: min(1000px, 100%);
     margin: 0 auto;
   }
 
   .review-card {
-    padding: 32px;
-    border-radius: 24px;
+    padding: 20px;
+    border-radius: 18px;
     background: $background;
 
     &__stars {
-      margin-bottom: 20px;
+      margin-bottom: 16px;
       color: #f59e0b;
       letter-spacing: 3px;
     }
 
     blockquote {
-      margin: 0 0 28px;
+      margin: 0 0 20px;
       color: #334155;
-      font-size: 16px;
-      line-height: 1.7;
+      font-size: 14px;
+      line-height: 1.6;
     }
 
     &__author {
@@ -426,7 +426,7 @@
   }
 
   &__final-cta {
-    padding: 120px 6%;
+    padding: 88px 6%;
     background:
       radial-gradient(
         circle at 50% 0%,
@@ -447,14 +447,14 @@
     }
 
     h2 {
-      margin: 0 0 20px;
+      margin: 0 0 16px;
       font-size: clamp(32px, 5vw, 54px);
       line-height: 1.1;
       letter-spacing: -1.5px;
     }
 
     p {
-      margin: 0 auto 32px;
+      margin: 0 auto 26px;
       color: rgb(255 255 255 / 85%);
       font-size: 16px;
       line-height: 1.6;
@@ -557,8 +557,22 @@
       width: 90%;
     }
 
+    &__hero-content h1 {
+      font-size: clamp(38px, 10vw, 46px);
+      letter-spacing: -1.5px;
+    }
+
     &__hero-content p {
+      margin-bottom: 26px;
       font-size: 15px;
+      line-height: 1.6;
+    }
+
+    &__eyebrow,
+    &__section-label {
+      margin-bottom: 12px;
+      font-size: 10px;
+      letter-spacing: 1.5px;
     }
 
     &__countries,
@@ -566,37 +580,86 @@
     &__how-it-works,
     &__map-section,
     &__partners {
-      padding: 70px 20px;
+      padding: 40px 16px;
     }
 
     &__section-heading {
       width: 100%;
-      margin-bottom: 40px;
+      margin-bottom: 24px;
+
+      h2 {
+        font-size: 28px;
+        letter-spacing: -0.8px;
+      }
+
+      p {
+        font-size: 14px;
+        line-height: 1.5;
+      }
+    }
+
+    &__steps {
+      margin-bottom: 24px;
     }
 
     &__step {
-      padding: 30px 25px;
+      padding: 24px 20px;
+    }
+
+    &__step-icon {
+      margin-bottom: 18px;
+    }
+
+    &__step h3 {
+      font-size: 20px;
     }
 
     &__final-cta {
-      padding: 80px 20px;
+      padding: 52px 16px;
     }
 
-    .country-card__content {
-      padding: 20px;
+    &__final-cta-content {
+      h2 {
+        font-size: 32px;
+      }
+
+      p {
+        margin-bottom: 24px;
+        font-size: 14px;
+      }
+    }
+
+    .country-card {
+      border-radius: 18px;
+
+      &__content {
+        padding: 18px;
+      }
+
+      &__content h3 {
+        font-size: 20px;
+      }
     }
 
     .review-card {
-      padding: 24px;
+      padding: 20px;
+      border-radius: 18px;
+
+      blockquote {
+        margin-bottom: 20px;
+        font-size: 14px;
+        line-height: 1.6;
+      }
     }
 
     .partners-grid {
-      gap: 14px;
+      gap: 12px;
     }
 
     .partner-card {
-      min-height: 90px;
-      padding: 16px;
+      min-height: 76px;
+      padding: 12px;
+      border-radius: 14px;
 
       img {
         max-height: 36px;
