@@ -1,0 +1,345 @@
+@use "../../styles/variables" as *;
+
+.profile-travel-map {
+  margin-top: 32px;
+  padding: 28px;
+  overflow: hidden;
+  border: 1px solid rgb(15 23 42 / 6%);
+  border-radius: 26px;
+  background: $surface;
+  box-shadow: 0 20px 40px -10px rgb(0 0 0 / 6%);
+
+  &__heading {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 22px;
+
+    h2 {
+      margin: 0 0 8px;
+      font-size: 26px;
+      line-height: 1.15;
+      letter-spacing: -0.7px;
+    }
+
+    p {
+      margin: 0;
+      color: #64748b;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .profile-page__eyebrow {
+      margin-bottom: 10px;
+    }
+  }
+
+  &__count {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex-shrink: 0;
+    padding: 9px 13px;
+    border-radius: 12px;
+    background: rgb(2 132 199 / 8%);
+    color: $primary;
+    font-size: 13px;
+    font-weight: 600;
+
+    span:first-child {
+      font-size: 18px;
+      font-weight: 700;
+    }
+  }
+
+  &__map {
+    position: relative;
+    height: 390px;
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+    border-radius: 18px;
+    background: #f1f5f9;
+    isolation: isolate;
+  }
+
+  &__leaflet {
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+    font-family: inherit;
+  }
+
+  &__status {
+    position: absolute;
+    right: 12px;
+    bottom: 12px;
+    z-index: 500;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 10px 13px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: rgb(255 255 255 / 95%);
+    color: #475569;
+    font-size: 12px;
+    box-shadow: 0 5px 18px rgb(15 23 42 / 10%);
+  }
+
+  &__spinner {
+    display: inline-block;
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+    border: 3px solid rgb(2 132 199 / 15%);
+    border-top-color: $primary;
+    border-radius: 50%;
+    animation: profile-travel-map-spin 0.8s linear infinite;
+  }
+
+  &__message {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 260px;
+    padding: 32px 20px;
+    border: 1px dashed rgb(2 132 199 / 25%);
+    border-radius: 18px;
+    background: #f8fafc;
+    text-align: center;
+
+    > .profile-travel-map__spinner {
+      margin-bottom: 8px;
+    }
+
+    h3 {
+      margin: 14px 0 8px;
+      color: #0f172a;
+      font-size: 18px;
+      line-height: 1.4;
+    }
+
+    p {
+      max-width: 430px;
+      margin: 0;
+      color: #64748b;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+  }
+
+  &__empty-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 54px;
+    height: 54px;
+    border-radius: 16px;
+    background: rgb(2 132 199 / 10%);
+    color: $primary;
+    font-size: 34px;
+  }
+
+  &__button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    margin-top: 20px;
+    padding: 0 18px;
+    border-radius: 11px;
+    background: $primary;
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    transition:
+      background 0.2s ease,
+      transform 0.2s ease;
+
+    &:hover {
+      transform: translateY(-2px);
+      background: #1d4ed8;
+    }
+
+    &:focus-visible {
+      outline: 3px solid rgb(37 99 235 / 30%);
+      outline-offset: 3px;
+    }
+  }
+
+  &__footer {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px 20px;
+    margin-top: 15px;
+
+    p {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0;
+      color: #64748b;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+  }
+
+  &__legend-dot {
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    flex-shrink: 0;
+    border: 2px solid white;
+    border-radius: 50%;
+    background: #0284c7;
+    box-shadow: 0 0 0 1px #0284c7;
+  }
+
+  &__warning {
+    color: #b45309 !important;
+  }
+
+  &__popup {
+    min-width: 180px;
+    max-width: 260px;
+    color: #0f172a;
+
+    h3 {
+      margin: 0 0 5px;
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    > p {
+      margin: 0 0 10px;
+      color: #64748b;
+      font-size: 12px;
+    }
+
+    ul {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    li + li {
+      padding-top: 8px;
+      border-top: 1px solid #e2e8f0;
+    }
+
+    a {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      color: $primary;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+
+      &:hover {
+        text-decoration: underline;
+      }
+
+      &:focus-visible {
+        outline: 2px solid $primary;
+        outline-offset: 3px;
+      }
+    }
+
+    small {
+      color: #64748b;
+      font-size: 11px;
+      font-weight: 400;
+    }
+  }
+}
+
+@keyframes profile-travel-map-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 700px) {
+  .profile-travel-map {
+    padding: 22px;
+    border-radius: 22px;
+
+    &__map {
+      height: 340px;
+    }
+
+    &__heading {
+      align-items: flex-start;
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .profile-travel-map {
+    margin-top: 24px;
+    padding: 17px;
+    border-radius: 18px;
+
+    &__heading {
+      gap: 12px;
+
+      h2 {
+        font-size: 22px;
+      }
+
+      p {
+        font-size: 13px;
+      }
+    }
+
+    &__count {
+      gap: 5px;
+      padding: 7px 9px;
+      font-size: 11px;
+
+      span:first-child {
+        font-size: 16px;
+      }
+    }
+
+    &__map {
+      height: 290px;
+      border-radius: 14px;
+    }
+
+    &__message {
+      min-height: 230px;
+      padding: 24px 15px;
+    }
+
+    &__status {
+      right: 8px;
+      bottom: 8px;
+      padding: 8px 10px;
+      font-size: 11px;
+    }
+
+    &__footer {
+      flex-direction: column;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .profile-travel-map__spinner {
+    animation: none;
+  }
+
+  .profile-travel-map__button {
+    transition: none;
+  }
+}
