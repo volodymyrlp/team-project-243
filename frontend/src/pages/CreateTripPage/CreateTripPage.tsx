@@ -315,6 +315,8 @@ export const CreateTripPage = () => {
 
                 <DatePicker
                   id='start-date'
+                  name='startDate'
+                  autoComplete='off'
                   selected={formData.startDate}
                   onChange={handleStartDateChange}
                   minDate={new Date()}
@@ -332,6 +334,8 @@ export const CreateTripPage = () => {
 
                 <DatePicker
                   id='end-date'
+                  name='endDate'
+                  autoComplete='off'
                   selected={formData.endDate}
                   onChange={handleEndDateChange}
                   minDate={formData.startDate || new Date()}
