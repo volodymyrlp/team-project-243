@@ -3,6 +3,7 @@ import type { ChangeEvent, FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "./ProfilePage.scss";
 import { Header } from "../../components/Header";
+import ProfileTravelMap from "../../components/ProfileTravelMap/ProfileTravelMap";
 import type { UserProfile } from "../../types/UserProfile";
 import type { UserUpdateRequest } from "../../types/UserUpdateRequest";
 import type { TripResponse } from "../../types/TripResponse";
@@ -743,6 +744,11 @@ export const ProfilePage = () => {
             )}
           </form>
         </div>
+
+        <ProfileTravelMap
+          trips={trips}
+          isLoading={isTripsLoading}
+        />
 
         <section className='profile-trips'>
           <div className='profile-trips__heading'>
