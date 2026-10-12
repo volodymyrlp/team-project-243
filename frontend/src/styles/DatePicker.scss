@@ -1,0 +1,129 @@
+.create-trip__date-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 50px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: 13px;
+  outline: none;
+  background: #f1f5f9;
+  color: #0f172a;
+  font-family: "Poppins", sans-serif;
+  font-size: 15px;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease;
+
+  &:hover {
+    background: #eaf0f6;
+  }
+
+  &:focus {
+    border-color: #2563eb;
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgb(37 99 235 / 8%);
+  }
+
+  &::placeholder {
+    color: #94a3b8;
+  }
+}
+
+.create-trip__calendar {
+  overflow: hidden;
+  border: none !important;
+  border-radius: 18px !important;
+  box-shadow: 0 20px 45px rgb(15 23 42 / 15%);
+  font-family: "Poppins", sans-serif !important;
+}
+
+.create-trip__calendar .react-datepicker__header {
+  padding-top: 16px;
+  border-bottom: none;
+  background: #ffffff;
+}
+
+.create-trip__calendar .react-datepicker__current-month {
+  margin-bottom: 12px;
+  color: #0f172a;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.create-trip__calendar .react-datepicker__day-names {
+  white-space: nowrap;
+}
+
+.create-trip__calendar .react-datepicker__day-name {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.create-trip__calendar .react-datepicker__day {
+  margin: 3px;
+  border-radius: 8px;
+  color: #0f172a;
+  line-height: 32px;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+
+  &:hover {
+    background: #dbeafe;
+    color: #2563eb;
+  }
+}
+
+.create-trip__calendar .react-datepicker__day--selected,
+.create-trip__calendar .react-datepicker__day--keyboard-selected {
+  background: #2563eb;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.create-trip__calendar .react-datepicker__day--today {
+  color: #2563eb;
+  font-weight: 700;
+}
+
+.create-trip__calendar .react-datepicker__day--outside-month {
+  color: #cbd5e1;
+}
+
+.create-trip__calendar .react-datepicker__day--disabled {
+  color: #cbd5e1;
+  cursor: not-allowed;
+
+  &:hover {
+    background: transparent;
+    color: #cbd5e1;
+  }
+}
+
+.create-trip__calendar .react-datepicker__navigation {
+  top: 13px;
+}
+
+.create-trip__calendar .react-datepicker__navigation-icon::before {
+  border-color: #64748b;
+}
+
+.create-trip__calendar .react-datepicker__triangle {
+  display: none;
+}
+
+.inspiration-date-picker__popper {
+  z-index: 1100 !important;
+}
+
+.inspiration-date-picker__input {
+  max-width: 320px;
+}
+
+@media (max-width: 520px) {
+  .inspiration-date-picker__input {
+    max-width: 100%;
+  }
+}
