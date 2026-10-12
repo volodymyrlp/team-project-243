@@ -7,6 +7,7 @@ import "./TravelInspirationPage.scss";
 import RomeImage from "../../assets/images/Rome.webp";
 import LvivImage from "../../assets/images/Lviv.webp";
 import ParisImage from "../../assets/images/Paris.webp";
+import { Header } from "../../components/Header";
 
 interface InspirationDay {
   title: string;
@@ -350,301 +351,308 @@ export default function TravelInspirationPage() {
   };
 
   return (
-    <main className='travel-inspiration'>
-      <section className='travel-inspiration__hero'>
-        <div className='travel-inspiration__hero-content'>
-          <span className='travel-inspiration__eyebrow'>
-            YOUR NEXT ADVENTURE STARTS HERE
-          </span>
-
-          <h1>Find Inspiration for Your Next Adventure</h1>
-
-          <p>
-            Discover thoughtfully curated trips, explore new places, and find an
-            idea for your next unforgettable journey.
-          </p>
-
-          <a
-            className='travel-inspiration__hero-button'
-            href='#inspiration-trips'
-          >
-            Explore trips
-            <span aria-hidden='true'>→</span>
-          </a>
-        </div>
-      </section>
-
-      <section
-        className='travel-inspiration__trips'
-        id='inspiration-trips'
-      >
-        <div className='travel-inspiration__section-heading'>
-          <div>
+    <>
+      <Header />
+      <main className='travel-inspiration'>
+        <section className='travel-inspiration__hero'>
+          <div className='travel-inspiration__hero-content'>
             <span className='travel-inspiration__eyebrow'>
-              HANDPICKED FOR YOU
+              YOUR NEXT ADVENTURE STARTS HERE
             </span>
 
-            <h2>Trips worth dreaming about</h2>
+            <h1>Find Inspiration for Your Next Adventure</h1>
 
             <p>
-              From cultural city breaks to stylish weekends with friends, find
-              the journey that feels right for you.
+              Discover thoughtfully curated trips, explore new places, and find
+              an idea for your next unforgettable journey.
+            </p>
+
+            <a
+              className='travel-inspiration__hero-button'
+              href='#inspiration-trips'
+            >
+              Explore trips
+              <span aria-hidden='true'>→</span>
+            </a>
+          </div>
+        </section>
+
+        <section
+          className='travel-inspiration__trips'
+          id='inspiration-trips'
+        >
+          <div className='travel-inspiration__section-heading'>
+            <div>
+              <span className='travel-inspiration__eyebrow'>
+                HANDPICKED FOR YOU
+              </span>
+
+              <h2>Trips worth dreaming about</h2>
+
+              <p>
+                From cultural city breaks to stylish weekends with friends, find
+                the journey that feels right for you.
+              </p>
+            </div>
+
+            <span className='travel-inspiration__trip-count'>
+              {inspirationTrips.length} curated trips
+            </span>
+          </div>
+
+          <div className='travel-inspiration__grid'>
+            {inspirationTrips.map((trip, index) => (
+              <article
+                className='inspiration-card'
+                key={trip.id}
+              >
+                <div className='inspiration-card__image-wrapper'>
+                  <img
+                    className='inspiration-card__image'
+                    src={trip.image}
+                    alt={trip.destination}
+                    loading='lazy'
+                  />
+
+                  <span className='inspiration-card__number'>0{index + 1}</span>
+
+                  <span className='inspiration-card__duration'>
+                    {trip.duration} {trip.duration === 1 ? "day" : "days"}
+                  </span>
+                </div>
+
+                <div className='inspiration-card__content'>
+                  <span className='inspiration-card__destination'>
+                    <span aria-hidden='true'>⌖</span>
+                    {trip.destination}
+                  </span>
+
+                  <h3>{trip.title}</h3>
+
+                  <p className='inspiration-card__subtitle'>{trip.subtitle}</p>
+
+                  <p className='inspiration-card__description'>
+                    {trip.description}
+                  </p>
+
+                  <div className='inspiration-card__tags'>
+                    {trip.tags.map((tag) => (
+                      <span
+                        className='inspiration-card__tag'
+                        key={tag}
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+
+                  <button
+                    className='inspiration-card__button'
+                    type='button'
+                    onClick={() => openTripDetails(trip)}
+                  >
+                    Explore trip
+                    <span aria-hidden='true'>→</span>
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className='travel-inspiration__cta'>
+          <div>
+            <span className='travel-inspiration__eyebrow'>
+              MAKE IT YOUR OWN
+            </span>
+
+            <h2>Your next story is waiting to happen.</h2>
+
+            <p>
+              Find an idea you love and start planning a trip that is uniquely
+              yours.
             </p>
           </div>
 
-          <span className='travel-inspiration__trip-count'>
-            {inspirationTrips.length} curated trips
-          </span>
-        </div>
+          <a
+            className='travel-inspiration__cta-button'
+            href='/trips/create'
+          >
+            Plan your own trip
+            <span aria-hidden='true'>→</span>
+          </a>
+        </section>
 
-        <div className='travel-inspiration__grid'>
-          {inspirationTrips.map((trip, index) => (
-            <article
-              className='inspiration-card'
-              key={trip.id}
+        {selectedTrip && (
+          <div
+            className='trip-details'
+            role='presentation'
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) {
+                closeDetails();
+              }
+            }}
+          >
+            <section
+              className='trip-details__dialog'
+              role='dialog'
+              aria-modal='true'
+              aria-labelledby='trip-details-title'
             >
-              <div className='inspiration-card__image-wrapper'>
+              <button
+                className='trip-details__close'
+                type='button'
+                aria-label='Close trip details'
+                onClick={closeDetails}
+                disabled={isAddingTrip}
+              >
+                ×
+              </button>
+
+              <div className='trip-details__hero'>
                 <img
-                  className='inspiration-card__image'
-                  src={trip.image}
-                  alt={trip.destination}
-                  loading='lazy'
+                  src={selectedTrip.image}
+                  alt={selectedTrip.destination}
                 />
 
-                <span className='inspiration-card__number'>0{index + 1}</span>
+                <div className='trip-details__hero-overlay' />
 
-                <span className='inspiration-card__duration'>
-                  {trip.duration} {trip.duration === 1 ? "day" : "days"}
-                </span>
+                <div className='trip-details__hero-content'>
+                  <span>{selectedTrip.destination}</span>
+                  <h2 id='trip-details-title'>{selectedTrip.title}</h2>
+                  <p>{selectedTrip.subtitle}</p>
+                </div>
               </div>
 
-              <div className='inspiration-card__content'>
-                <span className='inspiration-card__destination'>
-                  <span aria-hidden='true'>⌖</span>
-                  {trip.destination}
-                </span>
+              <div className='trip-details__body'>
+                <div className='trip-details__overview'>
+                  <span>{selectedTrip.duration} days</span>
+                  <span>{selectedTrip.days.length} itinerary days</span>
+                </div>
 
-                <h3>{trip.title}</h3>
-
-                <p className='inspiration-card__subtitle'>{trip.subtitle}</p>
-
-                <p className='inspiration-card__description'>
-                  {trip.description}
+                <p className='trip-details__description'>
+                  {selectedTrip.description}
                 </p>
 
-                <div className='inspiration-card__tags'>
-                  {trip.tags.map((tag) => (
-                    <span
-                      className='inspiration-card__tag'
-                      key={tag}
+                <h3 className='trip-details__heading'>
+                  Your day-by-day itinerary
+                </h3>
+
+                <div className='trip-details__days'>
+                  {selectedTrip.days.map((day, index) => (
+                    <article
+                      className='trip-day'
+                      key={day.title}
                     >
-                      {tag}
-                    </span>
+                      <div className='trip-day__number'>
+                        {String(index + 1).padStart(2, "0")}
+                      </div>
+
+                      <div className='trip-day__content'>
+                        <span className='trip-day__label'>DAY {index + 1}</span>
+
+                        <h4>{day.title}</h4>
+                        <p>{day.description}</p>
+
+                        <ul>
+                          {day.activities.map((activity) => (
+                            <li key={activity}>{activity}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </article>
                   ))}
                 </div>
 
-                <button
-                  className='inspiration-card__button'
-                  type='button'
-                  onClick={() => openTripDetails(trip)}
-                >
-                  Explore trip
-                  <span aria-hidden='true'>→</span>
-                </button>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
+                <div className='trip-details__footer'>
+                  <div className='trip-details__add-form'>
+                    <p>
+                      Love this itinerary? Add this trip to your profile and
+                      make it your own.
+                    </p>
 
-      <section className='travel-inspiration__cta'>
-        <div>
-          <span className='travel-inspiration__eyebrow'>MAKE IT YOUR OWN</span>
+                    {!createdTripId && (
+                      <>
+                        <label htmlFor='inspiration-start-date'>
+                          Start date
+                        </label>
 
-          <h2>Your next story is waiting to happen.</h2>
+                        <DatePicker
+                          id='inspiration-start-date'
+                          name='startDate'
+                          autoComplete='off'
+                          selected={getDateFromString(startDate)}
+                          onChange={(date: Date | null) => {
+                            setStartDate(date ? getLocalDateString(date) : "");
+                            setAddTripError("");
+                            setAddTripMessage("");
+                          }}
+                          minDate={today}
+                          dateFormat='dd MMM yyyy'
+                          placeholderText='Select start date'
+                          showPopperArrow={false}
+                          className='create-trip__date-input inspiration-date-picker__input'
+                          calendarClassName='create-trip__calendar'
+                          popperClassName='inspiration-date-picker__popper'
+                          popperPlacement='bottom-start'
+                          disabled={isAddingTrip}
+                          required
+                        />
 
-          <p>
-            Find an idea you love and start planning a trip that is uniquely
-            yours.
-          </p>
-        </div>
+                        <button
+                          className='trip-details__create-button'
+                          type='button'
+                          disabled={isAddingTrip}
+                          onClick={handleAddTrip}
+                        >
+                          {isAddingTrip ? "Adding trip..." : "Add to my trips"}
 
-        <a
-          className='travel-inspiration__cta-button'
-          href='/trips/create'
-        >
-          Plan your own trip
-          <span aria-hidden='true'>→</span>
-        </a>
-      </section>
+                          {!isAddingTrip && <span aria-hidden='true'>→</span>}
+                        </button>
+                      </>
+                    )}
 
-      {selectedTrip && (
-        <div
-          className='trip-details'
-          role='presentation'
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) {
-              closeDetails();
-            }
-          }}
-        >
-          <section
-            className='trip-details__dialog'
-            role='dialog'
-            aria-modal='true'
-            aria-labelledby='trip-details-title'
-          >
-            <button
-              className='trip-details__close'
-              type='button'
-              aria-label='Close trip details'
-              onClick={closeDetails}
-              disabled={isAddingTrip}
-            >
-              ×
-            </button>
+                    {addTripError && (
+                      <p
+                        className='trip-details__feedback trip-details__feedback--error'
+                        role='alert'
+                      >
+                        {addTripError}
+                      </p>
+                    )}
 
-            <div className='trip-details__hero'>
-              <img
-                src={selectedTrip.image}
-                alt={selectedTrip.destination}
-              />
+                    {addTripMessage && (
+                      <p
+                        className='trip-details__feedback trip-details__feedback--success'
+                        role='status'
+                      >
+                        {addTripMessage}
+                      </p>
+                    )}
 
-              <div className='trip-details__hero-overlay' />
-
-              <div className='trip-details__hero-content'>
-                <span>{selectedTrip.destination}</span>
-                <h2 id='trip-details-title'>{selectedTrip.title}</h2>
-                <p>{selectedTrip.subtitle}</p>
-              </div>
-            </div>
-
-            <div className='trip-details__body'>
-              <div className='trip-details__overview'>
-                <span>{selectedTrip.duration} days</span>
-                <span>{selectedTrip.days.length} itinerary days</span>
-              </div>
-
-              <p className='trip-details__description'>
-                {selectedTrip.description}
-              </p>
-
-              <h3 className='trip-details__heading'>
-                Your day-by-day itinerary
-              </h3>
-
-              <div className='trip-details__days'>
-                {selectedTrip.days.map((day, index) => (
-                  <article
-                    className='trip-day'
-                    key={day.title}
-                  >
-                    <div className='trip-day__number'>
-                      {String(index + 1).padStart(2, "0")}
-                    </div>
-
-                    <div className='trip-day__content'>
-                      <span className='trip-day__label'>DAY {index + 1}</span>
-
-                      <h4>{day.title}</h4>
-                      <p>{day.description}</p>
-
-                      <ul>
-                        {day.activities.map((activity) => (
-                          <li key={activity}>{activity}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  </article>
-                ))}
-              </div>
-
-              <div className='trip-details__footer'>
-                <div className='trip-details__add-form'>
-                  <p>
-                    Love this itinerary? Add this trip to your profile and make
-                    it your own.
-                  </p>
-
-                  {!createdTripId && (
-                    <>
-                      <label htmlFor='inspiration-start-date'>Start date</label>
-
-                      <DatePicker
-                        id='inspiration-start-date'
-                        name='startDate'
-                        autoComplete='off'
-                        selected={getDateFromString(startDate)}
-                        onChange={(date: Date | null) => {
-                          setStartDate(date ? getLocalDateString(date) : "");
-                          setAddTripError("");
-                          setAddTripMessage("");
-                        }}
-                        minDate={today}
-                        dateFormat='dd MMM yyyy'
-                        placeholderText='Select start date'
-                        showPopperArrow={false}
-                        className='create-trip__date-input inspiration-date-picker__input'
-                        calendarClassName='create-trip__calendar'
-                        popperClassName='inspiration-date-picker__popper'
-                        popperPlacement='bottom-start'
-                        disabled={isAddingTrip}
-                        required
-                      />
-
+                    {createdTripId && (
                       <button
                         className='trip-details__create-button'
                         type='button'
-                        disabled={isAddingTrip}
-                        onClick={handleAddTrip}
+                        onClick={() => navigate("/profile")}
                       >
-                        {isAddingTrip ? "Adding trip..." : "Add to my trips"}
-
-                        {!isAddingTrip && <span aria-hidden='true'>→</span>}
+                        View my trips
+                        <span aria-hidden='true'>→</span>
                       </button>
-                    </>
-                  )}
+                    )}
 
-                  {addTripError && (
-                    <p
-                      className='trip-details__feedback trip-details__feedback--error'
-                      role='alert'
-                    >
-                      {addTripError}
+                    <p className='trip-details__note'>
+                      Your trip will be saved as private. The displayed sample
+                      activities are inspiration and are not automatically saved
+                      to your trip itinerary.
                     </p>
-                  )}
-
-                  {addTripMessage && (
-                    <p
-                      className='trip-details__feedback trip-details__feedback--success'
-                      role='status'
-                    >
-                      {addTripMessage}
-                    </p>
-                  )}
-
-                  {createdTripId && (
-                    <button
-                      className='trip-details__create-button'
-                      type='button'
-                      onClick={() => navigate("/profile")}
-                    >
-                      View my trips
-                      <span aria-hidden='true'>→</span>
-                    </button>
-                  )}
-
-                  <p className='trip-details__note'>
-                    Your trip will be saved as private. The displayed sample
-                    activities are inspiration and are not automatically saved
-                    to your trip itinerary.
-                  </p>
+                  </div>
                 </div>
               </div>
-            </div>
-          </section>
-        </div>
-      )}
-    </main>
+            </section>
+          </div>
+        )}
+      </main>
+    </>
   );
 }
