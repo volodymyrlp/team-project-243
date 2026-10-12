@@ -11,6 +11,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import "./App.scss";
 import { CreateTripPage } from "./pages/CreateTripPage/CreateTripPage";
 import { ItineraryBuilderPage } from "./pages/ItineraryBuilderPage/ItineraryBuilderPage";
+import TravelInspirationPage from "./pages/TravelInspirationPage/TravelInspirationPage";
 
 function App() {
   return (
@@ -45,6 +46,10 @@ function App() {
           <Route
             path='/trips/:tripId/itinerary'
             element={<ItineraryBuilderPage />}
+          />
+          <Route
+            path='/inspiration'
+            element={<TravelInspirationPage />}
           />
         </Route>
         <Route
