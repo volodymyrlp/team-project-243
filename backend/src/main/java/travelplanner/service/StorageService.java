@@ -78,6 +78,68 @@ public class StorageService {
         return s3Presigner.presignGetObject(presignRequest).url().toString();
     }
 
+    public String generateTripCoverKey(UUID tripId, String contentType) {
+        String extension = getExtensionFromContentType(contentType);
+        return String.format("trips/%s/cover/%s.%s", tripId, UUID.randomUUID(), extension);
+    }
+
+    public String generateTripPhotoKey(UUID tripId, String contentType) {
+        String extension = getExtensionFromContentType(contentType);
+        return String.format("trips/%s/photos/%s.%s", tripId, UUID.randomUUID(), extension);
+    }
+
+    public PressingUploadResponseDto generateTripCoverUploadUrl(UUID tripId, PressingUploadRequestDto request) {
+        if (request.getFileSize() > MAX_FILE_SIZE) {
+            throw new InvalidFileException("File size exceeds 5MB limit");
+        }
+        if (!ALLOWED_TYPES.contains(request.getContentType())) {
+            throw new InvalidFileException("Invalid content type. Allowed: image/jpeg, image/png, image/webp");
+        }
+
+        String objectKey = generateTripCoverKey(tripId, request.getContentType());
+
+        PutObjectRequest objectRequest = PutObjectRequest.builder()
+                .bucket(bucket)
+                .key(objectKey)
+                .contentType(request.getContentType())
+                .build();
+
+        PutObjectPresignRequest presignRequest = PutObjectPresignRequest.builder()
+                .signatureDuration(Duration.ofMinutes(10))
+                .putObjectRequest(objectRequest)
+                .build();
+
+        String uploadUrl = s3Presigner.presignPutObject(presignRequest).url().toString();
+
+        return new PressingUploadResponseDto(uploadUrl, objectKey);
+    }
+
+    public PressingUploadResponseDto generateTripPhotoUploadUrl(UUID tripId, PressingUploadRequestDto request) {
+        if (request.getFileSize() > MAX_FILE_SIZE) {
+            throw new InvalidFileException("File size exceeds 5MB limit");
+        }
+        if (!ALLOWED_TYPES.contains(request.getContentType())) {
+            throw new InvalidFileException("Invalid content type. Allowed: image/jpeg, image/png, image/webp");
+        }
+
+        String objectKey = generateTripPhotoKey(tripId, request.getContentType());
+
+        PutObjectRequest objectRequest = PutObjectRequest.builder()
+                .bucket(bucket)
+                .key(objectKey)
+                .contentType(request.getContentType())
+                .build();
+
+        PutObjectPresignRequest presignRequest = PutObjectPresignRequest.builder()
+                .signatureDuration(Duration.ofMinutes(10))
+                .putObjectRequest(objectRequest)
+                .build();
+
+        String uploadUrl = s3Presigner.presignPutObject(presignRequest).url().toString();
+
+        return new PressingUploadResponseDto(uploadUrl, objectKey);
+    }
+
     private String getExtensionFromContentType(String contentType) {
         return switch (contentType) {
             case "image/jpeg" -> "jpg";
