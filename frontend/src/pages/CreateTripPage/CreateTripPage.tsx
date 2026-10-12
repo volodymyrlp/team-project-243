@@ -36,6 +36,7 @@ export const CreateTripPage = () => {
     isPublic: false,
   });
 
+  const [shareEmail, setShareEmail] = useState("");
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState("");
   const [error, setError] = useState("");
@@ -89,6 +90,11 @@ export const CreateTripPage = () => {
       isPublic: event.target.checked,
     }));
 
+    setError("");
+  };
+
+  const handleShareEmailChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setShareEmail(event.target.value);
     setError("");
   };
 
@@ -154,7 +160,7 @@ export const CreateTripPage = () => {
     }
   };
 
-  const handleSubmit = async (event: FormEvent) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     setError("");
@@ -359,6 +365,27 @@ export const CreateTripPage = () => {
                 value={formData.description}
                 onChange={handleChange}
               />
+            </div>
+
+            <div className='create-trip__field'>
+              <label htmlFor='share-email'>
+                Email to share with <span>(optional)</span>
+              </label>
+
+              <input
+                id='share-email'
+                name='shareEmail'
+                type='email'
+                placeholder='friend@example.com'
+                value={shareEmail}
+                onChange={handleShareEmailChange}
+                autoComplete='email'
+              />
+
+              <small>
+                Enter an email address for the person you want to share this
+                trip with.
+              </small>
             </div>
 
             <div className='create-trip__field'>
