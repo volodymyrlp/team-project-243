@@ -8,7 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -31,8 +30,8 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.web.multipart.MultipartFile;
 import travelplanner.dto.trip.PhotoResponse;
+import travelplanner.dto.trip.TripCoverUpdateRequest;
 import travelplanner.dto.trip.TripCreateRequest;
 import travelplanner.dto.trip.TripResponse;
 import travelplanner.entity.Itinerary;
@@ -58,7 +57,7 @@ class TripServiceTest {
     private TripMapper tripMapper;
 
     @Mock
-    private FileStorageService fileStorageService;
+    private StorageService storageService;
 
     @Mock
     private PhotoRepository photoRepository;
@@ -540,10 +539,13 @@ class TripServiceTest {
         trip.setTripId(tripId);
         trip.setOwner(currentUser);
 
-        MultipartFile file = mock(MultipartFile.class);
+        String coverKey = "trip-covers/" + tripId + "/new-cover.jpg";
+        TripCoverUpdateRequest request = new TripCoverUpdateRequest(coverKey);
+
         when(tripRepository.findById(tripId)).thenReturn(Optional.of(trip));
-        when(fileStorageService.uploadFile(file)).thenReturn("/uploads/new-cover.jpg");
         when(tripRepository.save(trip)).thenReturn(trip);
+        when(storageService.generateGetPresignedUrl(coverKey))
+                .thenReturn("https://supabase.co/storage/v1/s3/user-images/" + coverKey);
 
         TripResponse response = new TripResponse(
                 tripId,
@@ -554,18 +556,22 @@ class TripServiceTest {
                 null,
                 null,
                 null,
-                "/uploads/new-cover.jpg",
+                coverKey,
                 true,
                 LocalDateTime.now()
         );
         when(tripMapper.toResponse(trip)).thenReturn(response);
 
-        TripResponse result = tripService.updateTripCover(tripId, file, currentUser);
+        TripResponse result = tripService.updateTripCover(tripId, request, currentUser);
 
         assertNotNull(result);
-        assertEquals("/uploads/new-cover.jpg", result.coverUrl());
-        assertEquals("/uploads/new-cover.jpg", trip.getCoverUrl());
+        assertEquals(
+                "https://supabase.co/storage/v1/s3/user-images/" + coverKey,
+                result.coverUrl()
+        );
+        assertEquals(coverKey, trip.getCoverUrl());
         verify(tripRepository, times(1)).save(trip);
+        verify(storageService, times(1)).generateGetPresignedUrl(coverKey);
     }
 
     @Test
@@ -573,13 +579,13 @@ class TripServiceTest {
         UUID tripId = UUID.randomUUID();
         User currentUser = new User();
         currentUser.setUserId(UUID.randomUUID());
-        MultipartFile file = mock(MultipartFile.class);
+        TripCoverUpdateRequest request = new TripCoverUpdateRequest("trip-covers/cover.jpg");
 
         when(tripRepository.findById(tripId)).thenReturn(Optional.empty());
 
         assertThrows(
                 EntityNotFoundException.class,
-                () -> tripService.updateTripCover(tripId, file, currentUser)
+                () -> tripService.updateTripCover(tripId, request, currentUser)
         );
     }
 
@@ -596,12 +602,12 @@ class TripServiceTest {
         trip.setTripId(tripId);
         trip.setOwner(owner);
 
-        MultipartFile file = mock(MultipartFile.class);
+        TripCoverUpdateRequest request = new TripCoverUpdateRequest("trip-covers/cover.jpg");
         when(tripRepository.findById(tripId)).thenReturn(Optional.of(trip));
 
         ForbiddenException ex = assertThrows(
                 ForbiddenException.class,
-                () -> tripService.updateTripCover(tripId, file, differentUser)
+                () -> tripService.updateTripCover(tripId, request, differentUser)
         );
 
         assertEquals("You do not have permission to update this trip", ex.getMessage());
@@ -609,79 +615,84 @@ class TripServiceTest {
     }
 
     @Test
-    void uploadTripPhoto_Success() {
+    void updateTripCover_BlankCoverKey_ThrowsIllegalArgumentException() {
         UUID tripId = UUID.randomUUID();
         User currentUser = new User();
         currentUser.setUserId(UUID.randomUUID());
-
-        Trip trip = new Trip();
-        trip.setTripId(tripId);
-        trip.setOwner(currentUser);
-
-        MultipartFile file = mock(MultipartFile.class);
-        when(tripRepository.findById(tripId)).thenReturn(Optional.of(trip));
-        when(fileStorageService.uploadFile(file)).thenReturn("/uploads/photo123.jpg");
-
-        Photo photo = new Photo();
-        photo.setTrip(trip);
-        photo.setUploader(currentUser);
-        photo.setUrl("/uploads/photo123.jpg");
-
-        when(photoRepository.save(any(Photo.class))).thenReturn(photo);
-
-        PhotoResponse response = new PhotoResponse(
-                UUID.randomUUID(),
-                "/uploads/photo123.jpg",
-                currentUser.getUserId(),
-                LocalDateTime.now()
-        );
-        when(tripMapper.toPhotoResponse(photo)).thenReturn(response);
-
-        PhotoResponse result = tripService.uploadTripPhoto(tripId, file, currentUser);
-
-        assertNotNull(result);
-        assertEquals("/uploads/photo123.jpg", result.url());
-        verify(photoRepository, times(1)).save(any(Photo.class));
-    }
-
-    @Test
-    void uploadTripPhoto_TripNotFound_ThrowsEntityNotFoundException() {
-        UUID tripId = UUID.randomUUID();
-        User currentUser = new User();
-        currentUser.setUserId(UUID.randomUUID());
-        MultipartFile file = mock(MultipartFile.class);
-
-        when(tripRepository.findById(tripId)).thenReturn(Optional.empty());
+        TripCoverUpdateRequest request = new TripCoverUpdateRequest("   ");
 
         assertThrows(
-                EntityNotFoundException.class,
-                () -> tripService.uploadTripPhoto(tripId, file, currentUser)
+                IllegalArgumentException.class,
+                () -> tripService.updateTripCover(tripId, request, currentUser)
         );
     }
 
     @Test
-    void uploadTripPhoto_Forbidden_WhenNotOwner_ThrowsForbiddenException() {
+    void getTripById_ConvertsSupabaseKeyToPresignedUrl() {
         UUID tripId = UUID.randomUUID();
-        User owner = new User();
-        owner.setUserId(UUID.randomUUID());
-
-        User differentUser = new User();
-        differentUser.setUserId(UUID.randomUUID());
+        String coverKey = "trip-covers/" + tripId + "/cover.webp";
 
         Trip trip = new Trip();
         trip.setTripId(tripId);
-        trip.setOwner(owner);
+        trip.setCoverUrl(coverKey);
 
-        MultipartFile file = mock(MultipartFile.class);
+        when(tripRepository.findById(tripId)).thenReturn(Optional.of(trip));
+        when(storageService.generateGetPresignedUrl(coverKey))
+                .thenReturn("https://storage.presigned/" + coverKey);
+
+        TripResponse baseResponse = new TripResponse(
+                tripId,
+                "Trip Title",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                coverKey,
+                true,
+                LocalDateTime.now()
+        );
+        when(tripMapper.toResponse(trip)).thenReturn(baseResponse);
+
+        TripResponse result = tripService.getTripById(tripId);
+
+        assertNotNull(result);
+        assertEquals("https://storage.presigned/" + coverKey, result.coverUrl());
+        verify(storageService, times(1)).generateGetPresignedUrl(coverKey);
+    }
+
+    @Test
+    void getTripById_LegacyUrl_DoesNotCallStorageService() {
+        UUID tripId = UUID.randomUUID();
+        String legacyUrl = "http://example.com/legacy-cover.jpg";
+
+        Trip trip = new Trip();
+        trip.setTripId(tripId);
+        trip.setCoverUrl(legacyUrl);
+
         when(tripRepository.findById(tripId)).thenReturn(Optional.of(trip));
 
-        ForbiddenException ex = assertThrows(
-                ForbiddenException.class,
-                () -> tripService.uploadTripPhoto(tripId, file, differentUser)
+        TripResponse baseResponse = new TripResponse(
+                tripId,
+                "Trip Title",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                legacyUrl,
+                true,
+                LocalDateTime.now()
         );
+        when(tripMapper.toResponse(trip)).thenReturn(baseResponse);
 
-        assertEquals("You do not have permission to modify this trip", ex.getMessage());
-        verify(photoRepository, never()).save(any());
+        TripResponse result = tripService.getTripById(tripId);
+
+        assertNotNull(result);
+        assertEquals(legacyUrl, result.coverUrl());
+        verify(storageService, never()).generateGetPresignedUrl(any());
     }
 
     @Test

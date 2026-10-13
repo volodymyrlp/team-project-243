@@ -9,7 +9,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -29,11 +29,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
-import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.web.servlet.MockMvc;
 import travelplanner.config.SecurityConfig;
 import travelplanner.dto.trip.PhotoResponse;
+import travelplanner.dto.trip.TripCoverUpdateRequest;
 import travelplanner.dto.trip.TripResponse;
 import travelplanner.entity.User;
 import travelplanner.exception.EntityNotFoundException;
@@ -59,18 +59,11 @@ class TripControllerIntegrationTest {
     private CustomUserDetailsService customUserDetailsService;
 
     @Test
-    void uploadCover_Success() throws Exception {
+    void updateCover_Success() throws Exception {
         UUID tripId = UUID.randomUUID();
         User currentUser = new User();
         currentUser.setUserId(UUID.randomUUID());
         currentUser.setEmail("test@example.com");
-
-        MockMultipartFile file = new MockMultipartFile(
-                "file",
-                "test.jpg",
-                MediaType.IMAGE_JPEG_VALUE,
-                "some-image-data".getBytes()
-        );
 
         TripResponse response = new TripResponse(
                 tripId,
@@ -81,150 +74,60 @@ class TripControllerIntegrationTest {
                 "Description",
                 BigDecimal.valueOf(1000),
                 "USD",
-                "/uploads/test.jpg",
+                "https://storage.supabase.co/user-images/trip-covers/cover.jpg",
                 false,
                 LocalDateTime.now()
         );
 
-        when(tripService.updateTripCover(eq(tripId), any(), any())).thenReturn(response);
+        when(tripService.updateTripCover(eq(tripId), any(TripCoverUpdateRequest.class), any()))
+                .thenReturn(response);
 
-        mockMvc.perform(multipart("/api/v1/trips/{tripId}/cover", tripId)
-                        .file(file)
+        mockMvc.perform(patch("/api/v1/trips/{tripId}/cover", tripId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"coverKey\": \"trip-covers/cover.jpg\"}")
                         .with(user(currentUser))
                         .with(csrf()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.coverUrl").value("/uploads/test.jpg"));
+                .andExpect(jsonPath("$.coverUrl")
+                        .value("https://storage.supabase.co/user-images/trip-covers/cover.jpg"));
     }
 
     @Test
-    void uploadCover_Forbidden_Returns403() throws Exception {
+    void updateCover_Forbidden_Returns403() throws Exception {
         UUID tripId = UUID.randomUUID();
         User currentUser = new User();
         currentUser.setUserId(UUID.randomUUID());
         currentUser.setEmail("test@example.com");
 
-        MockMultipartFile file = new MockMultipartFile(
-                "file",
-                "test.jpg",
-                MediaType.IMAGE_JPEG_VALUE,
-                "some-image-data".getBytes()
-        );
-
-        when(tripService.updateTripCover(eq(tripId), any(), any()))
+        when(tripService.updateTripCover(eq(tripId), any(TripCoverUpdateRequest.class), any()))
                 .thenThrow(new ForbiddenException(
                         "You do not have permission to update this trip"));
 
-        mockMvc.perform(multipart("/api/v1/trips/{tripId}/cover", tripId)
-                        .file(file)
+        mockMvc.perform(patch("/api/v1/trips/{tripId}/cover", tripId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"coverKey\": \"trip-covers/cover.jpg\"}")
                         .with(user(currentUser))
                         .with(csrf()))
                 .andExpect(status().isForbidden());
     }
 
     @Test
-    void uploadCover_NotFound_Returns404() throws Exception {
+    void updateCover_NotFound_Returns404() throws Exception {
         UUID tripId = UUID.randomUUID();
         User currentUser = new User();
         currentUser.setUserId(UUID.randomUUID());
         currentUser.setEmail("test@example.com");
 
-        MockMultipartFile file = new MockMultipartFile(
-                "file",
-                "test.jpg",
-                MediaType.IMAGE_JPEG_VALUE,
-                "some-image-data".getBytes()
-        );
-
-        when(tripService.updateTripCover(eq(tripId), any(), any()))
+        when(tripService.updateTripCover(eq(tripId), any(TripCoverUpdateRequest.class), any()))
                 .thenThrow(new EntityNotFoundException("Trip not found with id: " + tripId));
 
-        mockMvc.perform(multipart("/api/v1/trips/{tripId}/cover", tripId)
-                        .file(file)
+        mockMvc.perform(patch("/api/v1/trips/{tripId}/cover", tripId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"coverKey\": \"trip-covers/cover.jpg\"}")
                         .with(user(currentUser))
                         .with(csrf()))
                 .andExpect(status().isNotFound())
                 .andExpect(content().string("Trip not found with id: " + tripId));
-    }
-
-    @Test
-    void uploadPhoto_Success() throws Exception {
-        UUID tripId = UUID.randomUUID();
-        User currentUser = new User();
-        currentUser.setUserId(UUID.randomUUID());
-        currentUser.setEmail("test@example.com");
-
-        MockMultipartFile file = new MockMultipartFile(
-                "file",
-                "photo.jpg",
-                MediaType.IMAGE_JPEG_VALUE,
-                "some-photo-data".getBytes()
-        );
-
-        PhotoResponse response = new PhotoResponse(
-                UUID.randomUUID(),
-                "/uploads/photo.jpg",
-                currentUser.getUserId(),
-                LocalDateTime.now()
-        );
-
-        when(tripService.uploadTripPhoto(eq(tripId), any(), any())).thenReturn(response);
-
-        mockMvc.perform(multipart("/api/v1/trips/{tripId}/photos", tripId)
-                        .file(file)
-                        .with(user(currentUser))
-                        .with(csrf()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.url").value("/uploads/photo.jpg"))
-                .andExpect(jsonPath("$.uploaderId").value(currentUser.getUserId().toString()));
-    }
-
-    @Test
-    void uploadPhoto_Forbidden_Returns403() throws Exception {
-        UUID tripId = UUID.randomUUID();
-        User currentUser = new User();
-        currentUser.setUserId(UUID.randomUUID());
-        currentUser.setEmail("test@example.com");
-
-        MockMultipartFile file = new MockMultipartFile(
-                "file",
-                "photo.jpg",
-                MediaType.IMAGE_JPEG_VALUE,
-                "some-photo-data".getBytes()
-        );
-
-        when(tripService.uploadTripPhoto(eq(tripId), any(), any()))
-                .thenThrow(new ForbiddenException(
-                        "You do not have permission to modify this trip"));
-
-        mockMvc.perform(multipart("/api/v1/trips/{tripId}/photos", tripId)
-                        .file(file)
-                        .with(user(currentUser))
-                        .with(csrf()))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
-    void uploadPhoto_NotFound_Returns404() throws Exception {
-        UUID tripId = UUID.randomUUID();
-        User currentUser = new User();
-        currentUser.setUserId(UUID.randomUUID());
-        currentUser.setEmail("test@example.com");
-
-        MockMultipartFile file = new MockMultipartFile(
-                "file",
-                "photo.jpg",
-                MediaType.IMAGE_JPEG_VALUE,
-                "some-photo-data".getBytes()
-        );
-
-        when(tripService.uploadTripPhoto(eq(tripId), any(), any()))
-                .thenThrow(new EntityNotFoundException("Trip not found with id: " + tripId));
-
-        mockMvc.perform(multipart("/api/v1/trips/{tripId}/photos", tripId)
-                        .file(file)
-                        .with(user(currentUser))
-                        .with(csrf()))
-                .andExpect(status().isNotFound());
     }
 
     @Test
