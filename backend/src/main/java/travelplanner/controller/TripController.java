@@ -15,20 +15,20 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.multipart.MultipartFile;
 import travelplanner.dto.trip.PhotoResponse;
+import travelplanner.dto.trip.TripCoverUpdateRequest;
 import travelplanner.dto.trip.TripCreateRequest;
 import travelplanner.dto.trip.TripResponse;
 import travelplanner.entity.User;
@@ -181,7 +181,7 @@ public class TripController {
 
     @Operation(
             summary = "Update trip cover",
-            description = "Uploads and sets a new cover photo for the trip. Owner only."
+            description = "Updates the cover photo key for the trip. Owner only."
     )
     @ApiResponses({
             @ApiResponse(
@@ -191,7 +191,7 @@ public class TripController {
             ),
             @ApiResponse(
                     responseCode = "400",
-                    description = "Invalid file or empty upload",
+                    description = "Validation failure or invalid body",
                     content = @Content
             ),
             @ApiResponse(
@@ -205,53 +205,14 @@ public class TripController {
                     content = @Content
             )
     })
-    @PostMapping(value = "/{tripId}/cover", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PatchMapping("/{tripId}/cover")
     public ResponseEntity<TripResponse> updateTripCover(
             @Parameter(description = "Unique ID of the trip", required = true)
             @PathVariable UUID tripId,
-            @Parameter(description = "Cover image file to upload", required = true)
-            @RequestParam("file") MultipartFile file,
+            @Valid @RequestBody TripCoverUpdateRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal User currentUser
     ) {
-        TripResponse response = tripService.updateTripCover(tripId, file, currentUser);
-        return ResponseEntity.ok(response);
-    }
-
-    @Operation(
-            summary = "Upload trip photo",
-            description = "Uploads a photo for the trip. Owner only."
-    )
-    @ApiResponses({
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Photo uploaded successfully",
-                    content = @Content(schema = @Schema(implementation = PhotoResponse.class))
-            ),
-            @ApiResponse(
-                    responseCode = "400",
-                    description = "Invalid file or empty upload",
-                    content = @Content
-            ),
-            @ApiResponse(
-                    responseCode = "403",
-                    description = "Forbidden - user is not the trip owner",
-                    content = @Content
-            ),
-            @ApiResponse(
-                    responseCode = "404",
-                    description = "Trip not found",
-                    content = @Content
-            )
-    })
-    @PostMapping(value = "/{tripId}/photos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<PhotoResponse> uploadTripPhoto(
-            @Parameter(description = "Unique ID of the trip", required = true)
-            @PathVariable UUID tripId,
-            @Parameter(description = "Photo file to upload", required = true)
-            @RequestParam("file") MultipartFile file,
-            @Parameter(hidden = true) @AuthenticationPrincipal User currentUser
-    ) {
-        PhotoResponse response = tripService.uploadTripPhoto(tripId, file, currentUser);
+        TripResponse response = tripService.updateTripCover(tripId, request, currentUser);
         return ResponseEntity.ok(response);
     }
 
