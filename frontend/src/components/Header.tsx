@@ -76,16 +76,16 @@ export const Header = () => {
         className={`header__nav ${isMenuOpen ? "header__nav--open" : ""}`}
         aria-label='Main navigation'
       >
-        <Link
-          to='/inspiration'
-          className='header__create-trip'
-          onClick={closeMenu}
-        >
-          Travel Inspiration
-        </Link>
-
         {isAuthenticated ? (
           <>
+            <Link
+              to='/inspiration'
+              className='header__create-trip'
+              onClick={closeMenu}
+            >
+              Travel Inspiration
+            </Link>
+
             <Link
               to='/trips/create'
               className='header__create-trip'
