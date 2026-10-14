@@ -390,48 +390,6 @@
       font-size: 10px;
     }
   }
-
-  &__coming-soon {
-    grid-column: 1 / -1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-top: 0;
-    padding: 28px;
-    text-align: center;
-    background-color: #ffffff;
-    border: 1px dashed #cbd5e1;
-    border-radius: 16px;
-  }
-
-  &__coming-soon-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 44px;
-    height: 44px;
-    margin-bottom: 14px;
-    color: #2563eb;
-    font-size: 22px;
-    background-color: #dbeafe;
-    border-radius: 14px;
-  }
-
-  &__coming-soon h2 {
-    margin: 0 0 8px;
-    color: #0f172a;
-    font-size: 18px;
-    font-weight: 650;
-    line-height: 1.4;
-  }
-
-  &__coming-soon p {
-    max-width: 560px;
-    margin: 0 auto;
-    color: #64748b;
-    font-size: 14px;
-    line-height: 1.7;
-  }
 }
 
 .trip-map-marker-wrapper {
@@ -487,10 +445,6 @@
 
     &__details {
       padding: 20px;
-    }
-
-    &__coming-soon {
-      padding: 24px;
     }
   }
 }
@@ -576,14 +530,6 @@
     &__map-message {
       min-height: 290px;
       padding: 18px;
-    }
-
-    &__coming-soon {
-      padding: 22px 16px;
-    }
-
-    &__coming-soon h2 {
-      font-size: 16px;
     }
   }
 }
