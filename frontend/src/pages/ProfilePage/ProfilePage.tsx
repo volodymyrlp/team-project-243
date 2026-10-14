@@ -480,10 +480,10 @@ export const ProfilePage = () => {
 
         const presignData: {
           uploadUrl: string;
-          key: string;
+          objectKey: string;
         } = await presignResponse.json();
 
-        if (!presignData.uploadUrl || !presignData.key) {
+        if (!presignData.uploadUrl || !presignData.objectKey) {
           throw new Error("The server returned invalid upload information.");
         }
 
@@ -501,7 +501,7 @@ export const ProfilePage = () => {
           );
         }
 
-        avatarKey = presignData.key;
+        avatarKey = presignData.objectKey;
       }
 
       const response = await fetch(`${API_URL}/api/v1/users/me`, {
@@ -855,7 +855,7 @@ export const ProfilePage = () => {
                     <div className='trip-card__cover'>
                       {trip.coverUrl ? (
                         <img
-                          src={`${import.meta.env.VITE_API_URL}${trip.coverUrl}`}
+                          src={trip.coverUrl}
                           alt={`${trip.title} cover`}
                         />
                       ) : (

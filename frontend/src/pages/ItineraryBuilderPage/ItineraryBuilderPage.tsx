@@ -275,7 +275,7 @@ export const ItineraryBuilderPage = () => {
           <div className='itinerary-builder__cover'>
             {trip.coverUrl ? (
               <img
-                src={`${API_URL}${trip.coverUrl}`}
+                src={trip.coverUrl}
                 alt={`${trip.title} cover`}
               />
             ) : (

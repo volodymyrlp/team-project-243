@@ -12,7 +12,7 @@ import type { CityOption } from "../../types/CityOption";
 import type { TripResponse } from "../../types/TripResponse";
 
 const API_URL = import.meta.env.VITE_API_URL;
-const MAX_COVER_SIZE = 10 * 1024 * 1024;
+const MAX_COVER_SIZE = 5 * 1024 * 1024;
 
 const formatDate = (date: Date) => {
   const year = date.getFullYear();
@@ -112,7 +112,7 @@ export const CreateTripPage = () => {
     }
 
     if (file.size > MAX_COVER_SIZE) {
-      setError("Cover photo must not exceed 10 MB.");
+      setError("Cover photo must not exceed 5 MB.");
       event.target.value = "";
       return;
     }
@@ -125,8 +125,12 @@ export const CreateTripPage = () => {
       setError("");
     };
 
-    reader.readAsDataURL(file);
+    reader.onerror = () => {
+      setError("Failed to read the selected image. Please try again.");
+      event.target.value = "";
+    };
 
+    reader.readAsDataURL(file);
     event.target.value = "";
   };
 
@@ -136,34 +140,62 @@ export const CreateTripPage = () => {
     setError("");
   };
 
-  const uploadCover = async (tripId: string, token: string) => {
+  const uploadCover = async (token: string): Promise<string | undefined> => {
     if (!coverFile) {
-      return;
+      return undefined;
     }
 
-    const coverData = new FormData();
-
-    coverData.append("file", coverFile);
-
-    const response = await fetch(`${API_URL}/api/v1/trips/${tripId}/cover`, {
+    const presignResponse = await fetch(`${API_URL}/api/v1/uploads/presign`, {
       method: "POST",
       headers: {
+        "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: coverData,
+      body: JSON.stringify({
+        contentType: coverFile.type,
+        fileSize: coverFile.size,
+      }),
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-
-      throw new Error(errorText || "Failed to upload cover photo");
+    if (!presignResponse.ok) {
+      const errorText = await presignResponse.text();
+      throw new Error(errorText || "Failed to prepare cover upload.");
     }
+
+    const presignData: {
+      uploadUrl: string;
+      objectKey: string;
+    } = await presignResponse.json();
+
+    const { uploadUrl, objectKey } = presignData;
+
+    if (!uploadUrl || !objectKey) {
+      throw new Error("Invalid response from upload service.");
+    }
+
+    const uploadResponse = await fetch(uploadUrl, {
+      method: "PUT",
+      headers: {
+        "Content-Type": coverFile.type,
+      },
+      body: coverFile,
+    });
+
+    if (!uploadResponse.ok) {
+      throw new Error("Failed to upload cover photo.");
+    }
+
+    return objectKey;
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
     setError("");
+
+    if (!API_URL) {
+      setError("API URL is not configured. Please try again later.");
+      return;
+    }
 
     if (!formData.destination) {
       setError("Please select a destination.");
@@ -190,6 +222,11 @@ export const CreateTripPage = () => {
       return;
     }
 
+    if (formData.budget && !Number.isFinite(Number(formData.budget))) {
+      setError("Please enter a valid budget.");
+      return;
+    }
+
     if (formData.budget && Number(formData.budget) < 0) {
       setError("Budget cannot be negative.");
       return;
@@ -207,25 +244,30 @@ export const CreateTripPage = () => {
       return;
     }
 
-    const tripData = {
-      title: formData.name.trim(),
-      destination: formData.destination.city.name,
-      startDate: formatDate(formData.startDate),
-      endDate: formatDate(formData.endDate),
-      ...(formData.description.trim() && {
-        description: formData.description.trim(),
-      }),
-      ...(formData.budget && {
-        budget: Number(formData.budget),
-      }),
-      ...(formData.currency.trim() && {
-        currency: formData.currency.trim(),
-      }),
-      isPublic: formData.isPublic,
-    };
-
     try {
       setIsLoading(true);
+
+      const coverKey = await uploadCover(token);
+
+      const tripData = {
+        title: formData.name.trim(),
+        destination: formData.destination.city.name,
+        startDate: formatDate(formData.startDate),
+        endDate: formatDate(formData.endDate),
+        ...(formData.description.trim() && {
+          description: formData.description.trim(),
+        }),
+        ...(formData.budget !== "" && {
+          budget: Number(formData.budget),
+        }),
+        ...(formData.currency.trim() && {
+          currency: formData.currency.trim(),
+        }),
+        isPublic: formData.isPublic,
+        ...(coverKey && {
+          coverUrl: coverKey,
+        }),
+      };
 
       const response = await fetch(`${API_URL}/api/v1/trips`, {
         method: "POST",
@@ -238,27 +280,20 @@ export const CreateTripPage = () => {
 
       if (!response.ok) {
         const errorText = await response.text();
-
-        throw new Error(errorText || "Failed to create trip");
+        throw new Error(errorText || "Failed to create trip.");
       }
 
       const createdTrip: TripResponse = await response.json();
-
-      if (coverFile) {
-        await uploadCover(createdTrip.tripId, token);
-      }
 
       navigate(`/trips/${createdTrip.tripId}/itinerary`);
     } catch (error) {
       console.error("Failed to create trip:", error);
 
-      if (coverFile) {
-        setError(
-          "Trip was created, but the cover photo could not be uploaded. Please try again.",
-        );
-      } else {
-        setError("Failed to create trip. Please try again.");
-      }
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Failed to create trip. Please try again.",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -418,7 +453,7 @@ export const CreateTripPage = () => {
                   </span>
 
                   <span className='create-trip__cover-hint'>
-                    JPG, PNG or other image · Max 10 MB
+                    JPG, PNG or other image · Max 5 MB
                   </span>
 
                   <input
