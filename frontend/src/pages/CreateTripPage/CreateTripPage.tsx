@@ -13,6 +13,10 @@ import type { TripResponse } from "../../types/TripResponse";
 
 const API_URL = import.meta.env.VITE_API_URL;
 const MAX_COVER_SIZE = 5 * 1024 * 1024;
+interface PresignResponse {
+  uploadUrl: string;
+  objectKey: string;
+}
 
 const formatDate = (date: Date) => {
   const year = date.getFullYear();
@@ -20,6 +24,53 @@ const formatDate = (date: Date) => {
   const day = String(date.getDate()).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
+};
+
+const getErrorMessage = (
+  responseBody: string,
+  fallback: string,
+): string => {
+  if (!responseBody.trim()) {
+    return fallback;
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(responseBody);
+
+    if (typeof parsed === "string") {
+      return parsed;
+    }
+
+    if (typeof parsed === "object" && parsed !== null) {
+      const data = parsed as {
+        message?: unknown;
+        error?: unknown;
+        errors?: unknown;
+      };
+
+      if (Array.isArray(data.errors)) {
+        const messages = data.errors.filter(
+          (item): item is string => typeof item === "string",
+        );
+
+        if (messages.length > 0) {
+          return messages.join(" ");
+        }
+      }
+
+      if (typeof data.message === "string" && data.message.trim()) {
+        return data.message;
+      }
+
+      if (typeof data.error === "string" && data.error.trim()) {
+        return data.error;
+      }
+    }
+  } catch {
+    // The response is not JSON; use the text returned by the server.
+  }
+
+  return responseBody;
 };
 
 export const CreateTripPage = () => {
@@ -120,8 +171,13 @@ export const CreateTripPage = () => {
     const reader = new FileReader();
 
     reader.onload = () => {
+      if (typeof reader.result !== "string") {
+        setError("Failed to read the selected image. Please try again.");
+        return;
+      }
+
       setCoverFile(file);
-      setCoverPreview(reader.result as string);
+      setCoverPreview(reader.result);
       setError("");
     };
 
@@ -159,18 +215,22 @@ export const CreateTripPage = () => {
 
     if (!presignResponse.ok) {
       const errorText = await presignResponse.text();
-      throw new Error(errorText || "Failed to prepare cover upload.");
+
+      throw new Error(
+        getErrorMessage(errorText, "Failed to prepare cover upload."),
+      );
     }
 
-    const presignData: {
-      uploadUrl: string;
-      objectKey: string;
-    } = await presignResponse.json();
-
+    const presignData: PresignResponse = await presignResponse.json();
     const { uploadUrl, objectKey } = presignData;
 
-    if (!uploadUrl || !objectKey) {
-      throw new Error("Invalid response from upload service.");
+    if (
+      typeof uploadUrl !== "string" ||
+      !uploadUrl.trim() ||
+      typeof objectKey !== "string" ||
+      !objectKey.trim()
+    ) {
+      throw new Error("The server returned invalid upload information.");
     }
 
     const uploadResponse = await fetch(uploadUrl, {
@@ -182,7 +242,9 @@ export const CreateTripPage = () => {
     });
 
     if (!uploadResponse.ok) {
-      throw new Error("Failed to upload cover photo.");
+      throw new Error(
+        `Failed to upload cover photo (HTTP ${uploadResponse.status}).`,
+      );
     }
 
     return objectKey;
@@ -191,6 +253,10 @@ export const CreateTripPage = () => {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
+
+    if (isLoading) {
+      return;
+    }
 
     if (!API_URL) {
       setError("API URL is not configured. Please try again later.");
@@ -222,14 +288,18 @@ export const CreateTripPage = () => {
       return;
     }
 
-    if (formData.budget && !Number.isFinite(Number(formData.budget))) {
-      setError("Please enter a valid budget.");
-      return;
-    }
+    if (formData.budget.trim() !== "") {
+      const budget = Number(formData.budget);
 
-    if (formData.budget && Number(formData.budget) < 0) {
-      setError("Budget cannot be negative.");
-      return;
+      if (!Number.isFinite(budget)) {
+        setError("Please enter a valid budget.");
+        return;
+      }
+
+      if (budget < 0) {
+        setError("Budget cannot be negative.");
+        return;
+      }
     }
 
     if (formData.currency.trim().length > 10) {
@@ -257,7 +327,7 @@ export const CreateTripPage = () => {
         ...(formData.description.trim() && {
           description: formData.description.trim(),
         }),
-        ...(formData.budget !== "" && {
+        ...(formData.budget.trim() !== "" && {
           budget: Number(formData.budget),
         }),
         ...(formData.currency.trim() && {
@@ -280,10 +350,17 @@ export const CreateTripPage = () => {
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(errorText || "Failed to create trip.");
+
+        throw new Error(
+          getErrorMessage(errorText, "Failed to create trip."),
+        );
       }
 
       const createdTrip: TripResponse = await response.json();
+
+      if (!createdTrip.tripId) {
+        throw new Error("The server created the trip but returned no trip ID.");
+      }
 
       navigate(`/trips/${createdTrip.tripId}/itinerary`);
     } catch (error) {
@@ -303,17 +380,14 @@ export const CreateTripPage = () => {
     <>
       <Header />
 
-      <main className='create-trip-page'>
-        <section className='create-trip'>
-          <div className='create-trip__header'>
-            <Link
-              to='/profile'
-              className='create-trip__back'
-            >
+      <main className="create-trip-page">
+        <section className="create-trip">
+          <div className="create-trip__header">
+            <Link to="/profile" className="create-trip__back">
               ← Back to profile
             </Link>
 
-            <span className='create-trip__eyebrow'>YOUR TRAVEL</span>
+            <span className="create-trip__eyebrow">YOUR TRAVEL</span>
 
             <h1>Create a trip</h1>
 
@@ -322,18 +396,15 @@ export const CreateTripPage = () => {
             </p>
           </div>
 
-          <form
-            className='create-trip__form'
-            onSubmit={handleSubmit}
-          >
-            <div className='create-trip__field'>
-              <label htmlFor='name'>Trip name</label>
+          <form className="create-trip__form" onSubmit={handleSubmit}>
+            <div className="create-trip__field">
+              <label htmlFor="name">Trip name</label>
 
               <input
-                id='name'
-                name='name'
-                type='text'
-                placeholder='Summer vacation in Paris'
+                id="name"
+                name="name"
+                type="text"
+                placeholder="Summer vacation in Paris"
                 value={formData.name}
                 onChange={handleChange}
                 maxLength={255}
@@ -341,8 +412,8 @@ export const CreateTripPage = () => {
               />
             </div>
 
-            <div className='create-trip__field'>
-              <label htmlFor='destination'>Destination</label>
+            <div className="create-trip__field">
+              <label htmlFor="destination">Destination</label>
 
               <CitySelect
                 value={formData.destination}
@@ -350,71 +421,71 @@ export const CreateTripPage = () => {
               />
             </div>
 
-            <div className='create-trip__dates'>
-              <div className='create-trip__field'>
-                <label htmlFor='start-date'>Start date</label>
+            <div className="create-trip__dates">
+              <div className="create-trip__field">
+                <label htmlFor="start-date">Start date</label>
 
                 <DatePicker
-                  id='start-date'
-                  name='startDate'
-                  autoComplete='off'
+                  id="start-date"
+                  name="startDate"
+                  autoComplete="off"
                   selected={formData.startDate}
                   onChange={handleStartDateChange}
                   minDate={new Date()}
-                  dateFormat='dd MMM yyyy'
-                  placeholderText='Select start date'
+                  dateFormat="dd MMM yyyy"
+                  placeholderText="Select start date"
                   showPopperArrow={false}
                   isClearable
-                  className='create-trip__date-input'
-                  calendarClassName='create-trip__calendar'
+                  className="create-trip__date-input"
+                  calendarClassName="create-trip__calendar"
                 />
               </div>
 
-              <div className='create-trip__field'>
-                <label htmlFor='end-date'>End date</label>
+              <div className="create-trip__field">
+                <label htmlFor="end-date">End date</label>
 
                 <DatePicker
-                  id='end-date'
-                  name='endDate'
-                  autoComplete='off'
+                  id="end-date"
+                  name="endDate"
+                  autoComplete="off"
                   selected={formData.endDate}
                   onChange={handleEndDateChange}
                   minDate={formData.startDate || new Date()}
-                  dateFormat='dd MMM yyyy'
-                  placeholderText='Select end date'
+                  dateFormat="dd MMM yyyy"
+                  placeholderText="Select end date"
                   showPopperArrow={false}
                   isClearable
-                  className='create-trip__date-input'
-                  calendarClassName='create-trip__calendar'
+                  className="create-trip__date-input"
+                  calendarClassName="create-trip__calendar"
                 />
               </div>
             </div>
 
-            <div className='create-trip__field'>
-              <label htmlFor='description'>Description</label>
+            <div className="create-trip__field">
+              <label htmlFor="description">Description</label>
 
               <textarea
-                id='description'
-                name='description'
-                placeholder='Tell something about your trip...'
+                id="description"
+                name="description"
+                placeholder="Tell something about your trip..."
                 value={formData.description}
                 onChange={handleChange}
               />
             </div>
 
-            <div className='create-trip__field'>
-              <label htmlFor='share-email'>
+            <div className="create-trip__field">
+              <label htmlFor="share-email">
                 Email to share with <span>(optional)</span>
               </label>
 
               <input
-                id='share-email'
-                name='shareEmail'
-                type='email'
-                placeholder='friend@example.com'
+                id="share-email"
+                name="shareEmail"
+                type="email"
+                placeholder="friend@example.com"
                 value={shareEmail}
                 onChange={handleShareEmailChange}
-                autoComplete='email'
+                autoComplete="email"
               />
 
               <small>
@@ -423,19 +494,19 @@ export const CreateTripPage = () => {
               </small>
             </div>
 
-            <div className='create-trip__field'>
-              <label>Cover photo</label>
+            <div className="create-trip__field">
+              <label htmlFor="cover">Cover photo</label>
 
               {coverPreview ? (
-                <div className='create-trip__cover-preview'>
+                <div className="create-trip__cover-preview">
                   <img
                     src={coverPreview}
-                    alt='Selected trip cover preview'
+                    alt="Selected trip cover preview"
                   />
 
                   <button
-                    type='button'
-                    className='create-trip__cover-remove'
+                    type="button"
+                    className="create-trip__cover-remove"
                     onClick={handleRemoveCover}
                   >
                     Remove photo
@@ -443,63 +514,63 @@ export const CreateTripPage = () => {
                 </div>
               ) : (
                 <label
-                  htmlFor='cover'
-                  className='create-trip__cover-upload'
+                  htmlFor="cover"
+                  className="create-trip__cover-upload"
                 >
-                  <span className='create-trip__cover-icon'>📷</span>
+                  <span className="create-trip__cover-icon">📷</span>
 
-                  <span className='create-trip__cover-title'>
+                  <span className="create-trip__cover-title">
                     Choose a cover photo
                   </span>
 
-                  <span className='create-trip__cover-hint'>
+                  <span className="create-trip__cover-hint">
                     JPG, PNG or other image · Max 5 MB
                   </span>
 
                   <input
-                    id='cover'
-                    type='file'
-                    accept='image/*'
+                    id="cover"
+                    type="file"
+                    accept="image/*"
                     onChange={handleCoverChange}
                   />
                 </label>
               )}
             </div>
 
-            <div className='create-trip__dates'>
-              <div className='create-trip__field'>
-                <label htmlFor='budget'>Budget</label>
+            <div className="create-trip__dates">
+              <div className="create-trip__field">
+                <label htmlFor="budget">Budget</label>
 
                 <input
-                  id='budget'
-                  name='budget'
-                  type='number'
-                  min='0'
-                  step='0.01'
-                  placeholder='15000'
+                  id="budget"
+                  name="budget"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="15000"
                   value={formData.budget}
                   onChange={handleChange}
                 />
               </div>
 
-              <div className='create-trip__field'>
-                <label htmlFor='currency'>Currency</label>
+              <div className="create-trip__field">
+                <label htmlFor="currency">Currency</label>
 
                 <input
-                  id='currency'
-                  name='currency'
-                  type='text'
+                  id="currency"
+                  name="currency"
+                  type="text"
                   maxLength={10}
-                  placeholder='UAH'
+                  placeholder="UAH"
                   value={formData.currency}
                   onChange={handleChange}
                 />
               </div>
             </div>
 
-            <label className='create-trip__checkbox'>
+            <label className="create-trip__checkbox">
               <input
-                type='checkbox'
+                type="checkbox"
                 checked={formData.isPublic}
                 onChange={handlePublicChange}
               />
@@ -507,11 +578,11 @@ export const CreateTripPage = () => {
               <span>Make this trip public</span>
             </label>
 
-            {error && <p className='create-trip__error'>{error}</p>}
+            {error && <p className="create-trip__error">{error}</p>}
 
             <button
-              type='submit'
-              className='create-trip__submit'
+              type="submit"
+              className="create-trip__submit"
               disabled={isLoading}
             >
               {isLoading ? "Creating..." : "Create trip"}
