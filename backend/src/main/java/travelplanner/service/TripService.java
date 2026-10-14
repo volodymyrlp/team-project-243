@@ -9,8 +9,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 import travelplanner.dto.trip.PhotoResponse;
+import travelplanner.dto.trip.TripCoverUpdateRequest;
 import travelplanner.dto.trip.TripCreateRequest;
 import travelplanner.dto.trip.TripResponse;
 import travelplanner.entity.Itinerary;
@@ -30,7 +30,7 @@ public class TripService {
 
     private final TripRepository tripRepository;
     private final TripMapper tripMapper;
-    private final FileStorageService fileStorageService;
+    private final StorageService storageService;
     private final PhotoRepository photoRepository;
 
     @Transactional
@@ -54,13 +54,14 @@ public class TripService {
         }
 
         Trip savedTrip = tripRepository.save(trip);
-        return tripMapper.toResponse(savedTrip);
+        return toTripResponse(savedTrip);
     }
 
     @Transactional(readOnly = true)
     public Page<TripResponse> getMyTrips(User currentUser, Pageable pageable) {
-        Page<Trip> trips = tripRepository.findAllByOwnerOrderByCreatedAtDesc(currentUser, pageable);
-        return trips.map(tripMapper::toResponse);
+        Page<Trip> trips = tripRepository
+                .findAllByOwnerOrderByCreatedAtDesc(currentUser, pageable);
+        return trips.map(this::toTripResponse);
     }
 
     @Transactional(readOnly = true)
@@ -73,14 +74,14 @@ public class TripService {
         } else {
             trips = tripRepository.findAllByIsPublicTrueOrderByCreatedAtDesc(pageable);
         }
-        return trips.map(tripMapper::toResponse);
+        return trips.map(this::toTripResponse);
     }
 
     @Transactional(readOnly = true)
     public TripResponse getTripById(UUID tripId) {
         Trip trip = tripRepository.findById(tripId).orElseThrow(
                 () -> new EntityNotFoundException("Trip not found with id: " + tripId));
-        return tripMapper.toResponse(trip);
+        return toTripResponse(trip);
     }
 
     @Transactional
@@ -92,7 +93,15 @@ public class TripService {
     }
 
     @Transactional
-    public TripResponse updateTripCover(UUID tripId, MultipartFile file, User currentUser) {
+    public TripResponse updateTripCover(
+            UUID tripId,
+            TripCoverUpdateRequest request,
+            User currentUser
+    ) {
+        if (request == null || request.coverKey() == null || request.coverKey().isBlank()) {
+            throw new IllegalArgumentException("Cover key cannot be blank");
+        }
+
         Trip trip = tripRepository.findById(tripId).orElseThrow(
                 () -> new EntityNotFoundException("Trip not found with id: " + tripId));
 
@@ -100,30 +109,14 @@ public class TripService {
             throw new ForbiddenException("You do not have permission to update this trip");
         }
 
-        String coverUrl = fileStorageService.uploadFile(file);
-        trip.setCoverUrl(coverUrl);
+        trip.setCoverUrl(request.coverKey());
         Trip savedTrip = tripRepository.save(trip);
-        return tripMapper.toResponse(savedTrip);
+        return toTripResponse(savedTrip);
     }
 
     @Transactional
-    public PhotoResponse uploadTripPhoto(UUID tripId, MultipartFile file, User currentUser) {
-        Trip trip = tripRepository.findById(tripId).orElseThrow(
-                () -> new EntityNotFoundException("Trip not found with id: " + tripId));
-
-        if (!trip.getOwner().getUserId().equals(currentUser.getUserId())) {
-            throw new ForbiddenException("You do not have permission to modify this trip");
-        }
-
-        String photoUrl = fileStorageService.uploadFile(file);
-
-        Photo photo = new Photo();
-        photo.setTrip(trip);
-        photo.setUploader(currentUser);
-        photo.setUrl(photoUrl);
-
-        Photo savedPhoto = photoRepository.save(photo);
-        return tripMapper.toPhotoResponse(savedPhoto);
+    public TripResponse updateTripCover(UUID tripId, String coverKey, User currentUser) {
+        return updateTripCover(tripId, new TripCoverUpdateRequest(coverKey), currentUser);
     }
 
     @Transactional(readOnly = true)
@@ -179,6 +172,40 @@ public class TripService {
         }
 
         Trip savedTrip = tripRepository.save(clonedTrip);
-        return tripMapper.toResponse(savedTrip);
+        return toTripResponse(savedTrip);
+    }
+
+    private TripResponse toTripResponse(Trip trip) {
+        TripResponse response = tripMapper.toResponse(trip);
+        if (response == null) {
+            return null;
+        }
+        String coverUrl = trip != null ? trip.getCoverUrl() : response.coverUrl();
+        if (coverUrl != null && !coverUrl.isBlank() && isSupabaseKey(coverUrl)) {
+            String presignedUrl = storageService.generateGetPresignedUrl(coverUrl);
+            if (presignedUrl != null) {
+                return new TripResponse(
+                        response.tripId(),
+                        response.title(),
+                        response.destination(),
+                        response.startDate(),
+                        response.endDate(),
+                        response.description(),
+                        response.budget(),
+                        response.currency(),
+                        presignedUrl,
+                        response.isPublic(),
+                        response.createdAt()
+                );
+            }
+        }
+        return response;
+    }
+
+    private boolean isSupabaseKey(String key) {
+        if (key == null || key.isBlank()) {
+            return false;
+        }
+        return !key.contains("://") && !key.startsWith("/");
     }
 }
