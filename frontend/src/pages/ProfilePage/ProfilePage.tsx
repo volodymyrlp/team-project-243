@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -13,10 +14,21 @@ const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
 const ALLOWED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 type TripFilter = "all" | "favorites";
+
 interface PresignResponse {
   uploadUrl: string;
-  objectKey: string;
+  key: string;
 }
+
+const getApiUrl = (): string => {
+  const apiUrl = import.meta.env.VITE_API_URL?.replace(/\/+$/, "");
+
+  if (!apiUrl) {
+    throw new Error("The API URL is not configured.");
+  }
+
+  return apiUrl;
+};
 
 const getFavoriteStorageKey = (userId: string) =>
   `mriyaTrip_favoriteTrips_${userId}`;
@@ -162,10 +174,8 @@ export const ProfilePage = () => {
         return;
       }
 
-      const API_URL = import.meta.env.VITE_API_URL;
-
       const fetchProfileAttempt = async (): Promise<UserProfile | null> => {
-        const response = await fetch(`${API_URL}/api/v1/users/me`, {
+        const response = await fetch(`${getApiUrl()}/api/v1/users/me`, {
           method: "GET",
           headers: {
             Authorization: `Bearer ${token}`,
@@ -296,9 +306,7 @@ export const ProfilePage = () => {
       }
 
       try {
-        const API_URL = import.meta.env.VITE_API_URL;
-
-        const response = await fetch(`${API_URL}/api/v1/trips`, {
+        const response = await fetch(`${getApiUrl()}/api/v1/trips`, {
           method: "GET",
           headers: {
             Authorization: `Bearer ${token}`,
@@ -388,14 +396,15 @@ export const ProfilePage = () => {
     setTripsError("");
 
     try {
-      const API_URL = import.meta.env.VITE_API_URL;
-
-      const response = await fetch(`${API_URL}/api/v1/trips/${tripId}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
+      const response = await fetch(
+        `${getApiUrl()}/api/v1/trips/${tripId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         },
-      });
+      );
 
       if (response.status === 401 || response.status === 403) {
         localStorage.removeItem("token");
@@ -530,7 +539,7 @@ export const ProfilePage = () => {
     setError("");
 
     try {
-      const API_URL = import.meta.env.VITE_API_URL;
+      const API_URL = getApiUrl();
       let avatarKey: string | null = null;
 
       if (selectedAvatarFile) {
@@ -569,8 +578,8 @@ export const ProfilePage = () => {
         if (
           typeof presignData.uploadUrl !== "string" ||
           !presignData.uploadUrl.trim() ||
-          typeof presignData.objectKey !== "string" ||
-          !presignData.objectKey.trim()
+          typeof presignData.key !== "string" ||
+          !presignData.key.trim()
         ) {
           throw new Error("The server returned invalid upload information.");
         }
@@ -589,7 +598,7 @@ export const ProfilePage = () => {
           );
         }
 
-        avatarKey = presignData.objectKey;
+        avatarKey = presignData.key;
       }
 
       const response = await fetch(`${API_URL}/api/v1/users/me`, {
@@ -648,11 +657,11 @@ export const ProfilePage = () => {
 
   if (isLoading) {
     return (
-      <main className='profile-page'>
+      <main className="profile-page">
         <Header />
-        <section className='profile-page__content'>
-          <div className='profile-page__loading'>
-            <div className='profile-page__loading-spinner' />
+        <section className="profile-page__content">
+          <div className="profile-page__loading">
+            <div className="profile-page__loading-spinner" />
 
             <p>
               {isServerWaking
@@ -667,11 +676,11 @@ export const ProfilePage = () => {
 
   if (error && !profile) {
     return (
-      <main className='profile-page'>
+      <main className="profile-page">
         <Header />
-        <section className='profile-page__content'>
-          <div className='profile-page__error'>
-            <div className='profile-page__error-icon'>!</div>
+        <section className="profile-page__content">
+          <div className="profile-page__error">
+            <div className="profile-page__error-icon">!</div>
 
             <h2>Something went wrong</h2>
 
@@ -706,12 +715,12 @@ export const ProfilePage = () => {
       : sortedTrips;
 
   return (
-    <main className='profile-page'>
+    <main className="profile-page">
       <Header />
 
-      <section className='profile-page__content'>
-        <div className='profile-page__heading'>
-          <span className='profile-page__eyebrow'>YOUR ACCOUNT</span>
+      <section className="profile-page__content">
+        <div className="profile-page__heading">
+          <span className="profile-page__eyebrow">YOUR ACCOUNT</span>
 
           <h1>Profile</h1>
 
@@ -721,15 +730,12 @@ export const ProfilePage = () => {
           </p>
         </div>
 
-        <div className='profile-card'>
-          <div className='profile-card__top'>
-            <div className='profile-card__avatar-wrapper'>
-              <div className='profile-card__avatar'>
+        <div className="profile-card">
+          <div className="profile-card__top">
+            <div className="profile-card__avatar-wrapper">
+              <div className="profile-card__avatar">
                 {displayedAvatarUrl ? (
-                  <img
-                    src={displayedAvatarUrl}
-                    alt={profile.fullName}
-                  />
+                  <img src={displayedAvatarUrl} alt={profile.fullName} />
                 ) : (
                   avatarLetter
                 )}
@@ -739,15 +745,15 @@ export const ProfilePage = () => {
                 <>
                   <input
                     ref={avatarInputRef}
-                    type='file'
-                    accept='image/jpeg,image/png,image/webp'
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
                     onChange={handleAvatarChange}
                     hidden
                   />
 
                   <button
-                    type='button'
-                    className='profile-card__avatar-button'
+                    type="button"
+                    className="profile-card__avatar-button"
                     onClick={() => avatarInputRef.current?.click()}
                     disabled={isSaving}
                   >
@@ -757,15 +763,15 @@ export const ProfilePage = () => {
               )}
             </div>
 
-            <div className='profile-card__user'>
+            <div className="profile-card__user">
               <h2>{profile.fullName}</h2>
               <p>{profile.email}</p>
             </div>
 
             {!isEditing && (
               <button
-                type='button'
-                className='profile-card__edit-button'
+                type="button"
+                className="profile-card__edit-button"
                 onClick={handleEdit}
               >
                 Edit profile
@@ -773,13 +779,10 @@ export const ProfilePage = () => {
             )}
           </div>
 
-          <div className='profile-card__divider' />
+          <div className="profile-card__divider" />
 
-          <form
-            className='profile-form'
-            onSubmit={handleSave}
-          >
-            <div className='profile-form__heading'>
+          <form className="profile-form" onSubmit={handleSave}>
+            <div className="profile-form__heading">
               <h3>Personal information</h3>
 
               <p>
@@ -788,13 +791,13 @@ export const ProfilePage = () => {
               </p>
             </div>
 
-            <div className='profile-form__grid'>
+            <div className="profile-form__grid">
               <label>
                 <span>Full name</span>
 
                 <input
-                  name='fullName'
-                  type='text'
+                  name="fullName"
+                  type="text"
                   value={isEditing ? editData.fullName : profile.fullName}
                   onChange={handleChange}
                   disabled={!isEditing || isSaving}
@@ -805,21 +808,17 @@ export const ProfilePage = () => {
               <label>
                 <span>Email</span>
 
-                <input
-                  type='email'
-                  value={profile.email}
-                  disabled
-                />
+                <input type="email" value={profile.email} disabled />
               </label>
             </div>
 
-            {error && <p className='profile-form__error'>{error}</p>}
+            {error && <p className="profile-form__error">{error}</p>}
 
             {isEditing && (
-              <div className='profile-form__actions'>
+              <div className="profile-form__actions">
                 <button
-                  type='button'
-                  className='profile-form__cancel'
+                  type="button"
+                  className="profile-form__cancel"
                   onClick={handleCancel}
                   disabled={isSaving}
                 >
@@ -827,8 +826,8 @@ export const ProfilePage = () => {
                 </button>
 
                 <button
-                  type='submit'
-                  className='profile-form__save'
+                  type="submit"
+                  className="profile-form__save"
                   disabled={isSaving}
                 >
                   {isSaving ? "Saving..." : "Save changes"}
@@ -838,28 +837,25 @@ export const ProfilePage = () => {
           </form>
         </div>
 
-        <section className='profile-trips'>
-          <div className='profile-trips__heading'>
+        <section className="profile-trips">
+          <div className="profile-trips__heading">
             <div>
-              <span className='profile-page__eyebrow'>YOUR TRAVEL</span>
+              <span className="profile-page__eyebrow">YOUR TRAVEL</span>
 
               <h2>My trips</h2>
 
               <p>All trips you have created in one place.</p>
             </div>
 
-            <Link
-              to='/trips/create'
-              className='profile-trips__create-button'
-            >
+            <Link to="/trips/create" className="profile-trips__create-button">
               Create a trip
             </Link>
           </div>
 
           {!isTripsLoading && !tripsError && trips.length > 0 && (
-            <div className='profile-trips__filters'>
+            <div className="profile-trips__filters">
               <button
-                type='button'
+                type="button"
                 className={`profile-trips__filter ${
                   tripFilter === "all" ? "profile-trips__filter--active" : ""
                 }`}
@@ -870,7 +866,7 @@ export const ProfilePage = () => {
               </button>
 
               <button
-                type='button'
+                type="button"
                 className={`profile-trips__filter ${
                   tripFilter === "favorites"
                     ? "profile-trips__filter--active"
@@ -879,7 +875,7 @@ export const ProfilePage = () => {
                 onClick={() => setTripFilter("favorites")}
                 aria-pressed={tripFilter === "favorites"}
               >
-                <span aria-hidden='true'>♥</span> Favorites (
+                <span aria-hidden="true">♥</span> Favorites (
                 {
                   favoriteTripIds.filter((id) =>
                     trips.some((trip) => trip.tripId === id),
@@ -891,16 +887,16 @@ export const ProfilePage = () => {
           )}
 
           {isTripsLoading ? (
-            <div className='profile-trips__loading'>
+            <div className="profile-trips__loading">
               <p>Loading your trips...</p>
             </div>
           ) : tripsError ? (
-            <div className='profile-trips__error'>
+            <div className="profile-trips__error">
               <p>{tripsError}</p>
             </div>
           ) : trips.length === 0 ? (
-            <div className='profile-trips__empty'>
-              <div className='profile-trips__empty-icon'>✈</div>
+            <div className="profile-trips__empty">
+              <div className="profile-trips__empty-icon">✈</div>
 
               <h3>No trips yet</h3>
 
@@ -909,16 +905,13 @@ export const ProfilePage = () => {
                 adventure and it will appear here.
               </p>
 
-              <Link
-                to='/trips/create'
-                className='profile-trips__create-button'
-              >
+              <Link to="/trips/create" className="profile-trips__create-button">
                 Create your first trip
               </Link>
             </div>
           ) : displayedTrips.length === 0 ? (
-            <div className='profile-trips__empty'>
-              <div className='profile-trips__empty-icon'>♥</div>
+            <div className="profile-trips__empty">
+              <div className="profile-trips__empty-icon">♥</div>
 
               <h3>No favorite trips yet</h3>
 
@@ -928,35 +921,32 @@ export const ProfilePage = () => {
               </p>
 
               <button
-                type='button'
-                className='profile-trips__create-button'
+                type="button"
+                className="profile-trips__create-button"
                 onClick={() => setTripFilter("all")}
               >
                 Show all trips
               </button>
             </div>
           ) : (
-            <div className='profile-trips__grid'>
+            <div className="profile-trips__grid">
               {displayedTrips.map((trip) => {
                 const isFavorite = favoriteTripIds.includes(trip.tripId);
 
                 return (
-                  <div
-                    className='trip-card'
-                    key={trip.tripId}
-                  >
-                    <div className='trip-card__cover'>
+                  <div className="trip-card" key={trip.tripId}>
+                    <div className="trip-card__cover">
                       {trip.coverUrl ? (
                         <img
                           src={trip.coverUrl}
                           alt={`${trip.title} cover`}
                         />
                       ) : (
-                        <div className='trip-card__cover-placeholder'>✈</div>
+                        <div className="trip-card__cover-placeholder">✈</div>
                       )}
 
                       <button
-                        type='button'
+                        type="button"
                         className={`trip-card__favorite ${
                           isFavorite ? "trip-card__favorite--active" : ""
                         }`}
@@ -977,12 +967,12 @@ export const ProfilePage = () => {
                       </button>
                     </div>
 
-                    <div className='trip-card__body'>
-                      <div className='trip-card__content'>
-                        <div className='trip-card__details'>
+                    <div className="trip-card__body">
+                      <div className="trip-card__content">
+                        <div className="trip-card__details">
                           <h3>{trip.title}</h3>
 
-                          <p className='trip-card__destination'>
+                          <p className="trip-card__destination">
                             {trip.destination}
                           </p>
 
@@ -997,17 +987,17 @@ export const ProfilePage = () => {
                           </span>
                         </div>
 
-                        <div className='trip-card__actions'>
+                        <div className="trip-card__actions">
                           <Link
                             to={`/trips/${trip.tripId}/itinerary`}
-                            className='trip-card__button'
+                            className="trip-card__button"
                           >
                             View trip
                           </Link>
 
                           <button
-                            type='button'
-                            className='trip-card__delete'
+                            type="button"
+                            className="trip-card__delete"
                             onClick={() =>
                               handleDeleteTrip(trip.tripId, trip.title)
                             }
@@ -1027,14 +1017,11 @@ export const ProfilePage = () => {
           )}
         </section>
 
-        <ProfileTravelMap
-          trips={trips}
-          isLoading={isTripsLoading}
-        />
+        <ProfileTravelMap trips={trips} isLoading={isTripsLoading} />
 
-        <div className='profile-page__travel-card'>
+        <div className="profile-page__travel-card">
           <div>
-            <span className='profile-page__travel-icon'>✈</span>
+            <span className="profile-page__travel-icon">✈</span>
 
             <div>
               <h3>Ready for your next adventure?</h3>
@@ -1046,10 +1033,7 @@ export const ProfilePage = () => {
             </div>
           </div>
 
-          <Link
-            to='/trips/create'
-            className='profile-page__travel-button'
-          >
+          <Link to="/trips/create" className="profile-page__travel-button">
             Plan a trip
           </Link>
         </div>
