@@ -275,7 +275,7 @@ export const ItineraryBuilderPage = () => {
           <div className='itinerary-builder__cover'>
             {trip.coverUrl ? (
               <img
-                src={`${API_URL}${trip.coverUrl}`}
+                src={trip.coverUrl}
                 alt={`${trip.title} cover`}
               />
             ) : (
@@ -432,22 +432,6 @@ export const ItineraryBuilderPage = () => {
                 {coordinates.country ? `, ${coordinates.country}` : ""}
               </p>
             )}
-          </section>
-
-          <section className='itinerary-builder__coming-soon'>
-            <div
-              className='itinerary-builder__coming-soon-icon'
-              aria-hidden='true'
-            >
-              ✦
-            </div>
-            <div>
-              <h2>Your itinerary is waiting to be planned</h2>
-              <p>
-                Soon, you’ll be able to add places, organize your days, and
-                build your own route around the city.
-              </p>
-            </div>
           </section>
         </div>
       </section>
