@@ -1,12 +1,16 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
+
 import "../../styles/DatePicker.scss";
 import "./TravelInspirationPage.scss";
+
 import RomeImage from "../../assets/images/Rome.webp";
 import LvivImage from "../../assets/images/Lviv.webp";
 import ParisImage from "../../assets/images/Paris.webp";
+
 import { Header } from "../../components/Header";
 
 interface InspirationDay {
@@ -30,6 +34,13 @@ interface InspirationTrip {
 interface CreatedTripResponse {
   tripId: string;
 }
+
+interface PresignResponse {
+  uploadUrl: string;
+  objectKey: string;
+}
+
+const MAX_COVER_SIZE = 5 * 1024 * 1024;
 
 const inspirationTrips: InspirationTrip[] = [
   {
@@ -231,6 +242,73 @@ async function getErrorMessage(response: Response): Promise<string> {
   return defaultMessage;
 }
 
+async function uploadCoverImage(
+  imageUrl: string,
+  apiUrl: string,
+  token: string,
+): Promise<string> {
+  const imageResponse = await fetch(imageUrl);
+
+  if (!imageResponse.ok) {
+    throw new Error("Could not load the trip cover image.");
+  }
+
+  const imageBlob = await imageResponse.blob();
+
+  if (imageBlob.size === 0) {
+    throw new Error("The trip cover image is empty.");
+  }
+
+  if (imageBlob.size > MAX_COVER_SIZE) {
+    throw new Error("The trip cover image must be 5 MB or smaller.");
+  }
+
+  const contentType = imageBlob.type || "image/webp";
+
+  const presignResponse = await fetch(`${apiUrl}/api/v1/uploads/presign`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      contentType,
+      fileSize: imageBlob.size,
+    }),
+  });
+
+  if (!presignResponse.ok) {
+    if (presignResponse.status === 401 || presignResponse.status === 403) {
+      throw new Error("Your session may have expired. Please sign in again.");
+    }
+
+    throw new Error(await getErrorMessage(presignResponse));
+  }
+
+  const presignData: PresignResponse = await presignResponse.json();
+
+  if (!presignData.uploadUrl || !presignData.objectKey) {
+    throw new Error("The server returned invalid upload information.");
+  }
+
+  const uploadResponse = await fetch(presignData.uploadUrl, {
+    method: "PUT",
+    headers: {
+      "Content-Type": contentType,
+    },
+    body: imageBlob,
+  });
+
+  if (!uploadResponse.ok) {
+    throw new Error(
+      `Could not upload the cover image. Status: ${uploadResponse.status}`,
+    );
+  }
+
+  // 4. Return the storage key, not the temporary upload URL.
+  return presignData.objectKey;
+}
+
 export default function TravelInspirationPage() {
   const navigate = useNavigate();
 
@@ -289,7 +367,7 @@ export default function TravelInspirationPage() {
       return;
     }
 
-    const apiUrl = import.meta.env.VITE_API_URL;
+    const apiUrl = import.meta.env.VITE_API_URL?.replace(/\/+$/, "");
 
     if (!apiUrl) {
       setAddTripError("The API URL is not configured.");
@@ -301,6 +379,12 @@ export default function TravelInspirationPage() {
     setAddTripMessage("");
 
     try {
+      const coverKey = await uploadCoverImage(
+        selectedTrip.image,
+        apiUrl,
+        token,
+      );
+
       const response = await fetch(`${apiUrl}/api/v1/trips`, {
         method: "POST",
         headers: {
@@ -314,16 +398,18 @@ export default function TravelInspirationPage() {
           endDate: getEndDate(startDate, selectedTrip.duration),
           description: selectedTrip.description,
           isPublic: false,
+          coverUrl: coverKey,
         }),
       });
 
-      if (!response.ok) {
-        if (response.status === 401 || response.status === 403) {
-          throw new Error(
-            "Your session may have expired. Please sign in again.",
-          );
-        }
+      if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem("token");
+        navigate("/login");
 
+        throw new Error("Your session may have expired. Please sign in again.");
+      }
+
+      if (!response.ok) {
         throw new Error(await getErrorMessage(response));
       }
 
@@ -353,6 +439,7 @@ export default function TravelInspirationPage() {
   return (
     <>
       <Header />
+
       <main className='travel-inspiration'>
         <section className='travel-inspiration__hero'>
           <div className='travel-inspiration__hero-content'>
