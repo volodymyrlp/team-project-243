@@ -37,11 +37,17 @@ interface CreatedTripResponse {
 
 interface PresignResponse {
   uploadUrl: string;
-  objectKey: string;
+  key: string;
 }
 
 const MAX_COVER_SIZE = 5 * 1024 * 1024;
-const ALLOWED_COVER_TYPE = "image/webp";
+
+const ALLOWED_COVER_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+];
+
 class ApiRequestError extends Error {
   status: number;
 
@@ -273,7 +279,6 @@ async function uploadCoverImage(
   apiUrl: string,
   token: string,
 ): Promise<string> {
-
   const imageResponse = await fetch(imageUrl);
 
   if (!imageResponse.ok) {
@@ -290,10 +295,12 @@ async function uploadCoverImage(
     throw new Error("The trip cover image must be 5 MB or smaller.");
   }
 
-  const contentType = imageBlob.type;
+  const contentType = imageBlob.type.toLowerCase();
 
-  if (contentType !== ALLOWED_COVER_TYPE) {
-    throw new Error("The trip cover image must be in WebP format.");
+  if (!ALLOWED_COVER_TYPES.includes(contentType)) {
+    throw new Error(
+      "The trip cover image must be JPEG, PNG, or WebP.",
+    );
   }
 
   const presignResponse = await fetch(
@@ -322,10 +329,12 @@ async function uploadCoverImage(
   if (
     typeof presignData.uploadUrl !== "string" ||
     !presignData.uploadUrl.trim() ||
-    typeof presignData.objectKey !== "string" ||
-    !presignData.objectKey.trim()
+    typeof presignData.key !== "string" ||
+    !presignData.key.trim()
   ) {
-    throw new Error("The server returned invalid upload information.");
+    throw new Error(
+      "The server returned invalid upload information.",
+    );
   }
 
   const uploadResponse = await fetch(presignData.uploadUrl, {
@@ -342,15 +351,14 @@ async function uploadCoverImage(
     );
   }
 
-  return presignData.objectKey;
+  return presignData.key;
 }
 
 export default function TravelInspirationPage() {
   const navigate = useNavigate();
 
-  const [selectedTrip, setSelectedTrip] = useState<InspirationTrip | null>(
-    null,
-  );
+  const [selectedTrip, setSelectedTrip] =
+    useState<InspirationTrip | null>(null);
 
   const [startDate, setStartDate] = useState(() =>
     getLocalDateString(new Date()),
@@ -551,7 +559,9 @@ export default function TravelInspirationPage() {
                     loading="lazy"
                   />
 
-                  <span className="inspiration-card__number">0{index + 1}</span>
+                  <span className="inspiration-card__number">
+                    0{index + 1}
+                  </span>
 
                   <span className="inspiration-card__duration">
                     {trip.duration} {trip.duration === 1 ? "day" : "days"}
@@ -566,7 +576,9 @@ export default function TravelInspirationPage() {
 
                   <h3>{trip.title}</h3>
 
-                  <p className="inspiration-card__subtitle">{trip.subtitle}</p>
+                  <p className="inspiration-card__subtitle">
+                    {trip.subtitle}
+                  </p>
 
                   <p className="inspiration-card__description">
                     {trip.description}
@@ -716,7 +728,9 @@ export default function TravelInspirationPage() {
                           autoComplete="off"
                           selected={getDateFromString(startDate)}
                           onChange={(date: Date | null) => {
-                            setStartDate(date ? getLocalDateString(date) : "");
+                            setStartDate(
+                              date ? getLocalDateString(date) : "",
+                            );
                             setAddTripError("");
                             setAddTripMessage("");
                           }}
@@ -738,9 +752,13 @@ export default function TravelInspirationPage() {
                           disabled={isAddingTrip}
                           onClick={handleAddTrip}
                         >
-                          {isAddingTrip ? "Adding trip..." : "Add to my trips"}
+                          {isAddingTrip
+                            ? "Adding trip..."
+                            : "Add to my trips"}
 
-                          {!isAddingTrip && <span aria-hidden="true">→</span>}
+                          {!isAddingTrip && (
+                            <span aria-hidden="true">→</span>
+                          )}
                         </button>
                       </>
                     )}
