@@ -41,6 +41,16 @@ interface PresignResponse {
 }
 
 const MAX_COVER_SIZE = 5 * 1024 * 1024;
+const ALLOWED_COVER_TYPE = "image/webp";
+class ApiRequestError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiRequestError";
+    this.status = status;
+  }
+}
 
 const inspirationTrips: InspirationTrip[] = [
   {
@@ -206,7 +216,23 @@ async function getErrorMessage(response: Response): Promise<string> {
   const defaultMessage = "Could not add this trip. Please try again.";
 
   try {
-    const data: unknown = await response.json();
+    const responseText = await response.text();
+
+    if (!responseText) {
+      return `${defaultMessage} Status: ${response.status}`;
+    }
+
+    let data: unknown;
+
+    try {
+      data = JSON.parse(responseText);
+    } catch {
+      return responseText;
+    }
+
+    if (typeof data === "string") {
+      return data;
+    }
 
     if (typeof data !== "object" || data === null) {
       return defaultMessage;
@@ -218,9 +244,9 @@ async function getErrorMessage(response: Response): Promise<string> {
       error?: unknown;
     };
 
-    if (Array.isArray(errorData.errors) && errorData.errors.length > 0) {
+    if (Array.isArray(errorData.errors)) {
       const messages = errorData.errors.filter(
-        (error): error is string => typeof error === "string",
+        (item): item is string => typeof item === "string",
       );
 
       if (messages.length > 0) {
@@ -236,7 +262,7 @@ async function getErrorMessage(response: Response): Promise<string> {
       return errorData.error;
     }
   } catch {
-    // The response may not contain JSON.
+    // The response may not contain a readable body.
   }
 
   return defaultMessage;
@@ -247,6 +273,7 @@ async function uploadCoverImage(
   apiUrl: string,
   token: string,
 ): Promise<string> {
+
   const imageResponse = await fetch(imageUrl);
 
   if (!imageResponse.ok) {
@@ -263,31 +290,41 @@ async function uploadCoverImage(
     throw new Error("The trip cover image must be 5 MB or smaller.");
   }
 
-  const contentType = imageBlob.type || "image/webp";
+  const contentType = imageBlob.type;
 
-  const presignResponse = await fetch(`${apiUrl}/api/v1/uploads/presign`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
+  if (contentType !== ALLOWED_COVER_TYPE) {
+    throw new Error("The trip cover image must be in WebP format.");
+  }
+
+  const presignResponse = await fetch(
+    `${apiUrl}/api/v1/uploads/presign`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contentType,
+        fileSize: imageBlob.size,
+      }),
     },
-    body: JSON.stringify({
-      contentType,
-      fileSize: imageBlob.size,
-    }),
-  });
+  );
 
   if (!presignResponse.ok) {
-    if (presignResponse.status === 401 || presignResponse.status === 403) {
-      throw new Error("Your session may have expired. Please sign in again.");
-    }
+    const message = await getErrorMessage(presignResponse);
 
-    throw new Error(await getErrorMessage(presignResponse));
+    throw new ApiRequestError(message, presignResponse.status);
   }
 
   const presignData: PresignResponse = await presignResponse.json();
 
-  if (!presignData.uploadUrl || !presignData.objectKey) {
+  if (
+    typeof presignData.uploadUrl !== "string" ||
+    !presignData.uploadUrl.trim() ||
+    typeof presignData.objectKey !== "string" ||
+    !presignData.objectKey.trim()
+  ) {
     throw new Error("The server returned invalid upload information.");
   }
 
@@ -305,7 +342,6 @@ async function uploadCoverImage(
     );
   }
 
-  // 4. Return the storage key, not the temporary upload URL.
   return presignData.objectKey;
 }
 
@@ -329,7 +365,9 @@ export default function TravelInspirationPage() {
   today.setHours(0, 0, 0, 0);
 
   const closeDetails = () => {
-    if (isAddingTrip) return;
+    if (isAddingTrip) {
+      return;
+    }
 
     setSelectedTrip(null);
     setAddTripError("");
@@ -346,7 +384,9 @@ export default function TravelInspirationPage() {
   };
 
   const handleAddTrip = async () => {
-    if (!selectedTrip || isAddingTrip || createdTripId) return;
+    if (!selectedTrip || isAddingTrip || createdTripId) {
+      return;
+    }
 
     const token = localStorage.getItem("token");
 
@@ -362,7 +402,10 @@ export default function TravelInspirationPage() {
 
     const selectedDate = getDateFromString(startDate);
 
-    if (!selectedDate || selectedDate < today) {
+    const validationToday = new Date();
+    validationToday.setHours(0, 0, 0, 0);
+
+    if (!selectedDate || selectedDate < validationToday) {
       setAddTripError("The start date cannot be in the past.");
       return;
     }
@@ -402,20 +445,19 @@ export default function TravelInspirationPage() {
         }),
       });
 
-      if (response.status === 401 || response.status === 403) {
-        localStorage.removeItem("token");
-        navigate("/login");
-
-        throw new Error("Your session may have expired. Please sign in again.");
-      }
-
       if (!response.ok) {
-        throw new Error(await getErrorMessage(response));
+        const message = await getErrorMessage(response);
+
+        throw new ApiRequestError(message, response.status);
       }
 
       const createdTrip: CreatedTripResponse = await response.json();
 
-      if (!createdTrip.tripId) {
+      if (
+        !createdTrip ||
+        typeof createdTrip.tripId !== "string" ||
+        !createdTrip.tripId
+      ) {
         throw new Error(
           "The server did not return a trip ID. Please check your trips before trying again.",
         );
@@ -426,6 +468,17 @@ export default function TravelInspirationPage() {
         "Trip added successfully! You can now find it in your profile.",
       );
     } catch (error) {
+      console.error("Failed to add inspiration trip", error);
+
+      if (
+        error instanceof ApiRequestError &&
+        (error.status === 401 || error.status === 403)
+      ) {
+        localStorage.removeItem("token");
+        navigate("/login");
+        return;
+      }
+
       setAddTripError(
         error instanceof Error
           ? error.message
@@ -440,10 +493,10 @@ export default function TravelInspirationPage() {
     <>
       <Header />
 
-      <main className='travel-inspiration'>
-        <section className='travel-inspiration__hero'>
-          <div className='travel-inspiration__hero-content'>
-            <span className='travel-inspiration__eyebrow'>
+      <main className="travel-inspiration">
+        <section className="travel-inspiration__hero">
+          <div className="travel-inspiration__hero-content">
+            <span className="travel-inspiration__eyebrow">
               YOUR NEXT ADVENTURE STARTS HERE
             </span>
 
@@ -455,22 +508,22 @@ export default function TravelInspirationPage() {
             </p>
 
             <a
-              className='travel-inspiration__hero-button'
-              href='#inspiration-trips'
+              className="travel-inspiration__hero-button"
+              href="#inspiration-trips"
             >
               Explore trips
-              <span aria-hidden='true'>→</span>
+              <span aria-hidden="true">→</span>
             </a>
           </div>
         </section>
 
         <section
-          className='travel-inspiration__trips'
-          id='inspiration-trips'
+          className="travel-inspiration__trips"
+          id="inspiration-trips"
         >
-          <div className='travel-inspiration__section-heading'>
+          <div className="travel-inspiration__section-heading">
             <div>
-              <span className='travel-inspiration__eyebrow'>
+              <span className="travel-inspiration__eyebrow">
                 HANDPICKED FOR YOU
               </span>
 
@@ -482,64 +535,58 @@ export default function TravelInspirationPage() {
               </p>
             </div>
 
-            <span className='travel-inspiration__trip-count'>
+            <span className="travel-inspiration__trip-count">
               {inspirationTrips.length} curated trips
             </span>
           </div>
 
-          <div className='travel-inspiration__grid'>
+          <div className="travel-inspiration__grid">
             {inspirationTrips.map((trip, index) => (
-              <article
-                className='inspiration-card'
-                key={trip.id}
-              >
-                <div className='inspiration-card__image-wrapper'>
+              <article className="inspiration-card" key={trip.id}>
+                <div className="inspiration-card__image-wrapper">
                   <img
-                    className='inspiration-card__image'
+                    className="inspiration-card__image"
                     src={trip.image}
                     alt={trip.destination}
-                    loading='lazy'
+                    loading="lazy"
                   />
 
-                  <span className='inspiration-card__number'>0{index + 1}</span>
+                  <span className="inspiration-card__number">0{index + 1}</span>
 
-                  <span className='inspiration-card__duration'>
+                  <span className="inspiration-card__duration">
                     {trip.duration} {trip.duration === 1 ? "day" : "days"}
                   </span>
                 </div>
 
-                <div className='inspiration-card__content'>
-                  <span className='inspiration-card__destination'>
-                    <span aria-hidden='true'>⌖</span>
+                <div className="inspiration-card__content">
+                  <span className="inspiration-card__destination">
+                    <span aria-hidden="true">⌖</span>
                     {trip.destination}
                   </span>
 
                   <h3>{trip.title}</h3>
 
-                  <p className='inspiration-card__subtitle'>{trip.subtitle}</p>
+                  <p className="inspiration-card__subtitle">{trip.subtitle}</p>
 
-                  <p className='inspiration-card__description'>
+                  <p className="inspiration-card__description">
                     {trip.description}
                   </p>
 
-                  <div className='inspiration-card__tags'>
+                  <div className="inspiration-card__tags">
                     {trip.tags.map((tag) => (
-                      <span
-                        className='inspiration-card__tag'
-                        key={tag}
-                      >
+                      <span className="inspiration-card__tag" key={tag}>
                         {tag}
                       </span>
                     ))}
                   </div>
 
                   <button
-                    className='inspiration-card__button'
-                    type='button'
+                    className="inspiration-card__button"
+                    type="button"
                     onClick={() => openTripDetails(trip)}
                   >
                     Explore trip
-                    <span aria-hidden='true'>→</span>
+                    <span aria-hidden="true">→</span>
                   </button>
                 </div>
               </article>
@@ -547,9 +594,9 @@ export default function TravelInspirationPage() {
           </div>
         </section>
 
-        <section className='travel-inspiration__cta'>
+        <section className="travel-inspiration__cta">
           <div>
-            <span className='travel-inspiration__eyebrow'>
+            <span className="travel-inspiration__eyebrow">
               MAKE IT YOUR OWN
             </span>
 
@@ -562,18 +609,18 @@ export default function TravelInspirationPage() {
           </div>
 
           <a
-            className='travel-inspiration__cta-button'
-            href='/trips/create'
+            className="travel-inspiration__cta-button"
+            href="/trips/create"
           >
             Plan your own trip
-            <span aria-hidden='true'>→</span>
+            <span aria-hidden="true">→</span>
           </a>
         </section>
 
         {selectedTrip && (
           <div
-            className='trip-details'
-            role='presentation'
+            className="trip-details"
+            role="presentation"
             onMouseDown={(event) => {
               if (event.target === event.currentTarget) {
                 closeDetails();
@@ -581,62 +628,61 @@ export default function TravelInspirationPage() {
             }}
           >
             <section
-              className='trip-details__dialog'
-              role='dialog'
-              aria-modal='true'
-              aria-labelledby='trip-details-title'
+              className="trip-details__dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="trip-details-title"
             >
               <button
-                className='trip-details__close'
-                type='button'
-                aria-label='Close trip details'
+                className="trip-details__close"
+                type="button"
+                aria-label="Close trip details"
                 onClick={closeDetails}
                 disabled={isAddingTrip}
               >
                 ×
               </button>
 
-              <div className='trip-details__hero'>
+              <div className="trip-details__hero">
                 <img
                   src={selectedTrip.image}
                   alt={selectedTrip.destination}
                 />
 
-                <div className='trip-details__hero-overlay' />
+                <div className="trip-details__hero-overlay" />
 
-                <div className='trip-details__hero-content'>
+                <div className="trip-details__hero-content">
                   <span>{selectedTrip.destination}</span>
-                  <h2 id='trip-details-title'>{selectedTrip.title}</h2>
+                  <h2 id="trip-details-title">{selectedTrip.title}</h2>
                   <p>{selectedTrip.subtitle}</p>
                 </div>
               </div>
 
-              <div className='trip-details__body'>
-                <div className='trip-details__overview'>
+              <div className="trip-details__body">
+                <div className="trip-details__overview">
                   <span>{selectedTrip.duration} days</span>
                   <span>{selectedTrip.days.length} itinerary days</span>
                 </div>
 
-                <p className='trip-details__description'>
+                <p className="trip-details__description">
                   {selectedTrip.description}
                 </p>
 
-                <h3 className='trip-details__heading'>
+                <h3 className="trip-details__heading">
                   Your day-by-day itinerary
                 </h3>
 
-                <div className='trip-details__days'>
+                <div className="trip-details__days">
                   {selectedTrip.days.map((day, index) => (
-                    <article
-                      className='trip-day'
-                      key={day.title}
-                    >
-                      <div className='trip-day__number'>
+                    <article className="trip-day" key={day.title}>
+                      <div className="trip-day__number">
                         {String(index + 1).padStart(2, "0")}
                       </div>
 
-                      <div className='trip-day__content'>
-                        <span className='trip-day__label'>DAY {index + 1}</span>
+                      <div className="trip-day__content">
+                        <span className="trip-day__label">
+                          DAY {index + 1}
+                        </span>
 
                         <h4>{day.title}</h4>
                         <p>{day.description}</p>
@@ -651,8 +697,8 @@ export default function TravelInspirationPage() {
                   ))}
                 </div>
 
-                <div className='trip-details__footer'>
-                  <div className='trip-details__add-form'>
+                <div className="trip-details__footer">
+                  <div className="trip-details__add-form">
                     <p>
                       Love this itinerary? Add this trip to your profile and
                       make it your own.
@@ -660,14 +706,14 @@ export default function TravelInspirationPage() {
 
                     {!createdTripId && (
                       <>
-                        <label htmlFor='inspiration-start-date'>
+                        <label htmlFor="inspiration-start-date">
                           Start date
                         </label>
 
                         <DatePicker
-                          id='inspiration-start-date'
-                          name='startDate'
-                          autoComplete='off'
+                          id="inspiration-start-date"
+                          name="startDate"
+                          autoComplete="off"
                           selected={getDateFromString(startDate)}
                           onChange={(date: Date | null) => {
                             setStartDate(date ? getLocalDateString(date) : "");
@@ -675,34 +721,34 @@ export default function TravelInspirationPage() {
                             setAddTripMessage("");
                           }}
                           minDate={today}
-                          dateFormat='dd MMM yyyy'
-                          placeholderText='Select start date'
+                          dateFormat="dd MMM yyyy"
+                          placeholderText="Select start date"
                           showPopperArrow={false}
-                          className='create-trip__date-input inspiration-date-picker__input'
-                          calendarClassName='create-trip__calendar'
-                          popperClassName='inspiration-date-picker__popper'
-                          popperPlacement='bottom-start'
+                          className="create-trip__date-input inspiration-date-picker__input"
+                          calendarClassName="create-trip__calendar"
+                          popperClassName="inspiration-date-picker__popper"
+                          popperPlacement="bottom-start"
                           disabled={isAddingTrip}
                           required
                         />
 
                         <button
-                          className='trip-details__create-button'
-                          type='button'
+                          className="trip-details__create-button"
+                          type="button"
                           disabled={isAddingTrip}
                           onClick={handleAddTrip}
                         >
                           {isAddingTrip ? "Adding trip..." : "Add to my trips"}
 
-                          {!isAddingTrip && <span aria-hidden='true'>→</span>}
+                          {!isAddingTrip && <span aria-hidden="true">→</span>}
                         </button>
                       </>
                     )}
 
                     {addTripError && (
                       <p
-                        className='trip-details__feedback trip-details__feedback--error'
-                        role='alert'
+                        className="trip-details__feedback trip-details__feedback--error"
+                        role="alert"
                       >
                         {addTripError}
                       </p>
@@ -710,8 +756,8 @@ export default function TravelInspirationPage() {
 
                     {addTripMessage && (
                       <p
-                        className='trip-details__feedback trip-details__feedback--success'
-                        role='status'
+                        className="trip-details__feedback trip-details__feedback--success"
+                        role="status"
                       >
                         {addTripMessage}
                       </p>
@@ -719,16 +765,16 @@ export default function TravelInspirationPage() {
 
                     {createdTripId && (
                       <button
-                        className='trip-details__create-button'
-                        type='button'
+                        className="trip-details__create-button"
+                        type="button"
                         onClick={() => navigate("/profile")}
                       >
                         View my trips
-                        <span aria-hidden='true'>→</span>
+                        <span aria-hidden="true">→</span>
                       </button>
                     )}
 
-                    <p className='trip-details__note'>
+                    <p className="trip-details__note">
                       Your trip will be saved as private. The displayed sample
                       activities are inspiration and are not automatically saved
                       to your trip itinerary.

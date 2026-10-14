@@ -13,6 +13,10 @@ const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
 const ALLOWED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 type TripFilter = "all" | "favorites";
+interface PresignResponse {
+  uploadUrl: string;
+  objectKey: string;
+}
 
 const getFavoriteStorageKey = (userId: string) =>
   `mriyaTrip_favoriteTrips_${userId}`;
@@ -41,6 +45,59 @@ const saveFavoriteTripIds = (userId: string, ids: string[]) => {
     localStorage.setItem(getFavoriteStorageKey(userId), JSON.stringify(ids));
   } catch (error) {
     console.error("Failed to save favorite trips", error);
+  }
+};
+
+const getResponseError = async (
+  response: Response,
+  fallback: string,
+): Promise<string> => {
+  try {
+    const responseText = await response.text();
+
+    if (!responseText) {
+      return `${fallback} Status: ${response.status}`;
+    }
+
+    try {
+      const data: unknown = JSON.parse(responseText);
+
+      if (typeof data === "string") {
+        return data;
+      }
+
+      if (data && typeof data === "object") {
+        const errorData = data as {
+          errors?: unknown;
+          message?: unknown;
+          error?: unknown;
+        };
+
+        if (Array.isArray(errorData.errors)) {
+          const messages = errorData.errors.filter(
+            (item): item is string => typeof item === "string",
+          );
+
+          if (messages.length > 0) {
+            return messages.join(" ");
+          }
+        }
+
+        if (typeof errorData.message === "string") {
+          return errorData.message;
+        }
+
+        if (typeof errorData.error === "string") {
+          return errorData.error;
+        }
+      }
+    } catch {
+      return responseText;
+    }
+
+    return `${fallback} Status: ${response.status}`;
+  } catch {
+    return `${fallback} Status: ${response.status}`;
   }
 };
 
@@ -99,6 +156,7 @@ export const ProfilePage = () => {
       if (!token) {
         if (isMounted) {
           setIsLoading(false);
+          navigate("/login");
         }
 
         return;
@@ -122,7 +180,7 @@ export const ProfilePage = () => {
 
         if (!response.ok) {
           throw new Error(
-            `Failed to fetch profile. Status: ${response.status}`,
+            await getResponseError(response, "Failed to fetch profile."),
           );
         }
 
@@ -179,6 +237,10 @@ export const ProfilePage = () => {
 
           await new Promise((resolve) => setTimeout(resolve, 1000));
 
+          if (!isMounted) {
+            return;
+          }
+
           try {
             const data = await fetchProfileAttempt();
 
@@ -193,7 +255,9 @@ export const ProfilePage = () => {
 
             if (isMounted) {
               setError(
-                "We couldn't load your profile. Please try again later.",
+                secondError instanceof Error
+                  ? secondError.message
+                  : "We couldn't load your profile. Please try again later.",
               );
             }
           }
@@ -248,7 +312,9 @@ export const ProfilePage = () => {
         }
 
         if (!response.ok) {
-          throw new Error(`Failed to fetch trips. Status: ${response.status}`);
+          throw new Error(
+            await getResponseError(response, "Failed to fetch trips."),
+          );
         }
 
         const data: { content: TripResponse[] } = await response.json();
@@ -257,13 +323,17 @@ export const ProfilePage = () => {
           return;
         }
 
-        setTrips(data.content);
+        setTrips(Array.isArray(data.content) ? data.content : []);
         setTripsError("");
       } catch (fetchError) {
         console.error("Trips load failed", fetchError);
 
         if (isMounted) {
-          setTripsError("We couldn't load your trips. Please try again later.");
+          setTripsError(
+            fetchError instanceof Error
+              ? fetchError.message
+              : "We couldn't load your trips. Please try again later.",
+          );
         }
       } finally {
         if (isMounted) {
@@ -310,6 +380,7 @@ export const ProfilePage = () => {
     const token = localStorage.getItem("token");
 
     if (!token) {
+      navigate("/login");
       return;
     }
 
@@ -333,7 +404,9 @@ export const ProfilePage = () => {
       }
 
       if (!response.ok) {
-        throw new Error(`Failed to delete trip. Status: ${response.status}`);
+        throw new Error(
+          await getResponseError(response, "Failed to delete trip."),
+        );
       }
 
       setTrips((previousTrips) =>
@@ -354,7 +427,11 @@ export const ProfilePage = () => {
     } catch (deleteError) {
       console.error("Trip deletion failed", deleteError);
 
-      setTripsError("We couldn't delete this trip. Please try again later.");
+      setTripsError(
+        deleteError instanceof Error
+          ? deleteError.message
+          : "We couldn't delete this trip. Please try again later.",
+      );
     } finally {
       setDeletingTripId(null);
     }
@@ -440,6 +517,12 @@ export const ProfilePage = () => {
     const token = localStorage.getItem("token");
 
     if (!token || !profile) {
+      navigate("/login");
+      return;
+    }
+
+    if (!editData.fullName.trim()) {
+      setError("Please enter your full name.");
       return;
     }
 
@@ -474,16 +557,21 @@ export const ProfilePage = () => {
 
         if (!presignResponse.ok) {
           throw new Error(
-            `Failed to prepare avatar upload. Status: ${presignResponse.status}`,
+            await getResponseError(
+              presignResponse,
+              "Failed to prepare avatar upload.",
+            ),
           );
         }
 
-        const presignData: {
-          uploadUrl: string;
-          objectKey: string;
-        } = await presignResponse.json();
+        const presignData: PresignResponse = await presignResponse.json();
 
-        if (!presignData.uploadUrl || !presignData.objectKey) {
+        if (
+          typeof presignData.uploadUrl !== "string" ||
+          !presignData.uploadUrl.trim() ||
+          typeof presignData.objectKey !== "string" ||
+          !presignData.objectKey.trim()
+        ) {
           throw new Error("The server returned invalid upload information.");
         }
 
@@ -511,7 +599,7 @@ export const ProfilePage = () => {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          fullName: editData.fullName,
+          fullName: editData.fullName.trim(),
           avatarUrl: avatarKey,
         }),
       });
@@ -523,7 +611,9 @@ export const ProfilePage = () => {
       }
 
       if (!response.ok) {
-        throw new Error(`Failed to update profile. Status: ${response.status}`);
+        throw new Error(
+          await getResponseError(response, "Failed to update profile."),
+        );
       }
 
       const updatedProfile: UserProfile = await response.json();
@@ -545,8 +635,11 @@ export const ProfilePage = () => {
       setIsEditing(false);
     } catch (saveError) {
       console.error("Profile update failed", saveError);
+
       setError(
-        "We couldn't save your profile or upload the photo. Please try again.",
+        saveError instanceof Error
+          ? saveError.message
+          : "We couldn't save your profile or upload the photo. Please try again.",
       );
     } finally {
       setIsSaving(false);
